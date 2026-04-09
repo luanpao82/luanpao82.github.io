@@ -67,6 +67,56 @@
 
     nav a:hover { opacity: 1; text-decoration: none; }
 
+    /* ── HAMBURGER (mobile only) ── */
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      position: absolute;
+      right: 16px;
+    }
+    .nav-toggle span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-toggle.open span:nth-child(2) { opacity: 0; }
+    .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    @media (max-width: 640px) {
+      nav { justify-content: flex-start; padding: 0 16px; position: relative; }
+      .nav-toggle { display: flex; }
+      nav ul {
+        display: none;
+        flex-direction: column;
+        gap: 0;
+        position: absolute;
+        top: 52px;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.97);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        border-bottom: 1px solid var(--border);
+        padding: 8px 0;
+      }
+      nav ul.open { display: flex; }
+      nav ul li a {
+        display: block;
+        padding: 12px 24px;
+        font-size: 15px;
+      }
+    }
+
     /* ── SECTIONS ── */
     section { padding: 80px 24px; }
     section:nth-child(even) { background: var(--surface); }
@@ -682,6 +732,9 @@
 
 <!-- ── NAV ── -->
 <nav>
+  <button class="nav-toggle" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
   <ul>
     <li><a href="#about">About</a></li>
     <li><a href="#research">Current Projects</a></li>
@@ -1046,6 +1099,20 @@
 </footer>
 
 <script>
+  /* ── 0. HAMBURGER MENU ── */
+  const navToggle = document.querySelector('.nav-toggle');
+  const navUl = document.querySelector('nav ul');
+  navToggle.addEventListener('click', () => {
+    navToggle.classList.toggle('open');
+    navUl.classList.toggle('open');
+  });
+  navUl.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      navToggle.classList.remove('open');
+      navUl.classList.remove('open');
+    });
+  });
+
   /* ── 1. SCROLL PROGRESS BAR ── */
   const progressBar = document.getElementById('scroll-progress');
   window.addEventListener('scroll', () => {
