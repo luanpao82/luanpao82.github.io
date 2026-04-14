@@ -245,20 +245,42 @@
       object-position: center top;
     }
 
-    /* ── CURRENT PROJECTS ── */
-    .project-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+    /* ── CURRENT PROJECTS (carousel) ── */
+    .project-carousel-wrap {
+      position: relative;
+      margin-left: calc(50% - 50vw);
+      width: 100vw;
+    }
+
+    .project-carousel {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding: 0 max(24px, calc(50vw - 450px)) 16px;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+
+    .project-carousel:active { cursor: grabbing; }
+    .project-carousel::-webkit-scrollbar { height: 4px; }
+    .project-carousel::-webkit-scrollbar-track { background: var(--surface); border-radius: 2px; }
+    .project-carousel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .project-carousel .project-card.reveal {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .project-card {
+      flex: 0 0 300px;
+      scroll-snap-align: start;
       border-radius: 18px;
       overflow: hidden;
       background: var(--bg);
       border: 1px solid var(--border);
       border-top: 4px solid var(--text);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      transition: transform 0.2s, box-shadow 0.2s;
       text-decoration: none;
       display: flex;
       flex-direction: column;
@@ -266,34 +288,13 @@
     }
 
     .project-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.09);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
       text-decoration: none;
     }
 
-    .project-card:last-child:nth-child(odd) {
-      grid-column: 1 / -1;
-      max-width: calc(50% - 10px);
-    }
-
-    .project-video-wrap {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #f0f0f0;
-      overflow: hidden;
-    }
-
-    .project-video-wrap iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
     .project-body {
-      padding: 28px 28px 32px;
+      padding: 24px 22px 28px;
       display: flex;
       flex-direction: column;
       flex: 1;
@@ -648,8 +649,8 @@
         height: 120px;
         order: -1;
       }
-      .project-grid {
-        grid-template-columns: 1fr;
+      .project-carousel {
+        padding: 0 16px 16px;
       }
       .contact-grid {
         grid-template-columns: 1fr;
@@ -665,6 +666,13 @@
       background-size: cover;
       background-position: center 40%;
       background-attachment: fixed;
+      overflow: visible;
+    }
+
+    @media (max-width: 640px) {
+      #research, #publications, #teaching {
+        background-attachment: scroll;
+      }
     }
 
     #publications {
@@ -771,7 +779,14 @@
   <div class="container">
     <p class="section-label">Projects</p>
     <h2 class="section-title">Current Projects</h2>
-    <div class="project-grid">
+    <div class="carousel-nav">
+      <button class="carousel-btn" onclick="scrollProject(-1)">&#8592;</button>
+      <button class="carousel-btn" onclick="scrollProject(1)">&#8594;</button>
+    </div>
+  </div>
+
+  <div class="project-carousel-wrap">
+    <div class="project-carousel" id="projectCarousel">
 
       <a class="project-card" href="https://luanpao82.github.io/asian-nonprofit-research/index.html" target="_blank">
         <div class="project-body">
@@ -800,6 +815,15 @@
         </div>
       </a>
 
+      <a class="project-card" href="https://luanpao82.github.io/immigration-policy-nonprofit/" target="_blank">
+        <div class="project-body">
+          <p class="project-tag">Signaling Theory · Nonprofit Revenue</p>
+          <h3 class="project-title">Policy Signals &amp; Nonprofit Revenue</h3>
+          <p class="project-desc">Examines how local governments' immigration policies signal stakeholder support for 1,537 immigrant-serving nonprofits across 220 counties, revealing crowding-out effects on donation patterns.</p>
+          <span class="project-cta">View Project →</span>
+        </div>
+      </a>
+
       <a class="project-card" href="https://www.youtube.com/shorts/yEpDnkM1UXE" target="_blank">
         <div class="project-body">
           <p class="project-tag">Community Engagement · Prevention</p>
@@ -808,7 +832,6 @@
           <span class="project-cta">Watch Video →</span>
         </div>
       </a>
-
 
     </div>
   </div>
@@ -1121,6 +1144,10 @@
   });
 
   /* ── 3. CAROUSEL BUTTONS ── */
+  function scrollProject(dir) {
+    const el = document.getElementById('projectCarousel');
+    el.scrollBy({ left: dir * (300 + 14) * 2, behavior: 'smooth' });
+  }
   function scrollPub(dir) {
     const el = document.getElementById('pubCarousel');
     el.scrollBy({ left: dir * (280 + 14) * 3, behavior: 'smooth' });
@@ -1145,11 +1172,22 @@
     el.classList.add('reveal');
     revealObs.observe(el);
   });
-  document.querySelectorAll('.project-card').forEach((el, i) => {
-    el.classList.add('reveal');
-    el.dataset.delay = i * 80;
-    revealObs.observe(el);
-  });
+  // Reveal all project cards at once when carousel enters viewport
+  const projectWrap = document.querySelector('.project-carousel-wrap');
+  if (projectWrap) {
+    const projectCards = document.querySelectorAll('.project-card');
+    projectCards.forEach(el => { el.classList.add('reveal'); });
+    const projObs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        projectCards.forEach((el, i) => {
+          setTimeout(() => el.classList.add('revealed'), i * 80);
+        });
+        projObs.unobserve(entry.target);
+      });
+    }, { threshold: 0.05 });
+    projObs.observe(projectWrap);
+  }
   document.querySelectorAll('.contact-item, .hero-links').forEach((el, i) => {
     el.classList.add('reveal');
     el.dataset.delay = i * 80;
