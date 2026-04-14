@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seongho An | Public Administration & Nonprofit Studies</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -153,33 +155,71 @@
     .hero {
       max-width: 900px;
       margin: 0 auto;
+      text-align: center;
     }
 
     .hero-text {}
 
-    .hero-eyebrow {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      letter-spacing: 0.02em;
-      margin-bottom: 16px;
-    }
-
     .hero-name {
-      font-size: clamp(40px, 6vw, 64px);
+      font-size: clamp(40px, 6vw, 56px);
       font-weight: 700;
       letter-spacing: -0.03em;
       line-height: 1.05;
       color: var(--text);
-      margin-bottom: 24px;
+      margin-bottom: 12px;
     }
 
-    .hero-tagline {
-      font-size: 20px;
+    .hero-affiliation {
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .hero-department {
+      font-size: 15px;
       font-weight: 400;
       color: var(--text-secondary);
       margin-bottom: 28px;
       line-height: 1.5;
+    }
+
+    .hero-icons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .hero-icon-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 18px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-icon-link:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      text-decoration: none;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(26, 58, 92, 0.25);
+    }
+
+    .hero-divider {
+      width: 60px;
+      height: 2px;
+      background: var(--border);
+      margin: 0 auto 36px;
     }
 
     .hero-bio {
@@ -187,6 +227,7 @@
       color: var(--text);
       line-height: 1.7;
       margin-bottom: 32px;
+      text-align: left;
     }
 
     .hero-links {
@@ -756,20 +797,23 @@
 <section id="about">
   <div class="hero">
     <div class="hero-text">
-<h1 class="hero-name">Seongho An</h1>
+      <h1 class="hero-name">Seongho An</h1>
+      <p class="hero-affiliation">University of Central Florida</p>
+      <p class="hero-department">School of Public Administration</p>
+      <div class="hero-icons">
+        <a href="mailto:Seongho.An@ucf.edu" class="hero-icon-link" title="Email"><i class="fas fa-envelope"></i></a>
+        <a href="https://scholar.google.com/citations?user=tixJXfUAAAAJ&hl=en" class="hero-icon-link" target="_blank" title="Google Scholar"><i class="ai ai-google-scholar"></i></a>
+        <a href="https://www.linkedin.com/in/seongho-an-75107628/" class="hero-icon-link" target="_blank" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://ccie.ucf.edu/person/seongho-an/" class="hero-icon-link" target="_blank" title="UCF Profile"><i class="fas fa-university"></i></a>
+
+      </div>
+      <div class="hero-divider"></div>
       <p class="hero-bio">
         I study how nonprofits use digital technology for advocacy, how organizations collaborate across sectors,
         and how computational methods can deepen our understanding of civil society. My work is driven by a simple
         conviction: rigorous research should be useful to practitioners, policymakers, and the communities that
         nonprofits serve.
       </p>
-      <div class="hero-links">
-        <a href="mailto:Seongho.An@ucf.edu" class="btn btn-primary">Email Me</a>
-        <a href="https://scholar.google.com/citations?user=tixJXfUAAAAJ&hl=en" class="btn btn-secondary" target="_blank">Google Scholar</a>
-        <a href="https://www.linkedin.com/in/seongho-an-75107628/" class="btn btn-secondary" target="_blank">LinkedIn</a>
-        <a href="https://ccie.ucf.edu/person/seongho-an/" class="btn btn-secondary" target="_blank">UCF Profile</a>
-        <a href="#" class="btn btn-secondary">Download CV</a>
-      </div>
     </div>
   </div>
 </section>
