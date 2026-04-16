@@ -531,6 +531,21 @@
       flex-direction: column;
     }
 
+    .course-link-btn {
+      margin-top: auto;
+      padding-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--link);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .course-link-btn:hover { opacity: 0.7; }
+    .course-link-btn svg { flex-shrink: 0; }
+
     .course-code {
       font-size: 12px;
       font-weight: 700;
@@ -1085,13 +1100,14 @@
     <div class="course-carousel-wrap">
     <div class="course-carousel" id="courseCarousel">
 
-      <a href="https://luanpao82.github.io/seoul-case-study/" target="_blank" class="course-card" style="text-decoration:none;color:inherit;cursor:pointer;">
+      <div class="course-card">
         <span class="course-code">PAD 6958</span>
         <span class="course-level">Graduate · Field Study</span>
         <p class="course-title">Governance Field Study: Metropolitan Governance in Seoul</p>
         <p class="course-meta">In-person · Seoul, South Korea</p>
         <p class="course-desc">Week-long immersive field study examining Seoul Metropolitan Government's policies, governance reforms, and city management through comparative analysis with U.S. practices.</p>
-      </a>
+        <a href="https://luanpao82.github.io/seoul-case-study/" target="_blank" class="course-link-btn">Visit Course Site <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a>
+      </div>
 
       <div class="course-card">
         <span class="course-code">PAD 6701</span>
@@ -1117,13 +1133,14 @@
         <p class="course-desc">Statistical modeling and data analysis skills for addressing critical issues in public administration.</p>
       </div>
 
-      <a href="https://luanpao82.github.io/pad6149/" target="_blank" class="course-card" style="text-decoration:none;color:inherit;cursor:pointer;">
+      <div class="course-card">
         <span class="course-code">PAD 6149</span>
         <span class="course-level">Graduate · Capstone</span>
         <p class="course-title">Nonprofit Administration</p>
         <p class="course-meta">Online · 2021–2026</p>
         <p class="course-desc">Nonprofit leadership and board development. Students build portfolios demonstrating mastery of NASPAA universal competencies.</p>
-      </a>
+        <a href="https://luanpao82.github.io/pad6149/" target="_blank" class="course-link-btn">Visit Course Site <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a>
+      </div>
 
       <div class="course-card">
         <span class="course-code">PAD 6327</span>
