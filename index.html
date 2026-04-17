@@ -546,6 +546,33 @@
     .course-link-btn:hover { opacity: 0.7; }
     .course-link-btn svg { flex-shrink: 0; }
 
+    .course-subnav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+    .course-subnav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 2px 0;
+      transition: color 0.15s;
+    }
+    .course-subnav a:hover {
+      color: var(--text);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .course-subnav a + a::before {
+      content: '·';
+      margin-right: 10px;
+      color: var(--border);
+    }
+
     .course-code {
       font-size: 12px;
       font-weight: 700;
@@ -1140,6 +1167,11 @@
         <p class="course-meta">Online · 2021–2026</p>
         <p class="course-desc">Nonprofit leadership and board development. Students build portfolios demonstrating mastery of NASPAA universal competencies.</p>
         <a href="https://luanpao82.github.io/pad6149/" target="_blank" class="course-link-btn">Visit Course Site <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a>
+        <div class="course-subnav">
+          <a href="https://luanpao82.github.io/pad6149/Slides/overview.html" target="_blank">Briefing</a>
+          <a href="https://luanpao82.github.io/pad6149/pitch.html" target="_blank">Scroll</a>
+          <a href="https://luanpao82.github.io/pad6149/talk.html" target="_blank">Talk</a>
+        </div>
       </div>
 
       <div class="course-card">
