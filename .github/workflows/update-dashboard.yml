@@ -127,12 +127,13 @@ jobs:
                   msg = c["msg"].replace("\\", "\\\\").replace("'", "\\'")
                   commit_lines.append(f"        {{ date: '{c['date']}', msg: '{msg}' }}")
 
+              commits_block = ",\n".join(commit_lines)
               projects_js.append(f"""    {{
                 name: '{r["name"]}',
                 tag: '{r["tag"]}',
                 url: '{r["url"]}',
                 commits: [
-          {chr(10).join(commit_lines)}{(',' if commit_lines else '')}
+          {commits_block},
                 ]
               }}""")
 
