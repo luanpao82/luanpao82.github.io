@@ -1477,19 +1477,24 @@
 
   function loadVoice() {
     const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     // 1) Honor user pick from voice-picker.html (localStorage.jarvis_voice)
     const picked = localStorage.getItem('jarvis_voice');
     if (picked) {
       const m = voices.find(v => v.name === picked);
-      if (m) { jarvisVoice = m; return; }
+      if (m && (!isMobile || m.localService)) { jarvisVoice = m; return; }
     }
-    // 2) Default: male English, prefer Daniel / British male
+    // 2) Default: male English; mobile prefers local voices to avoid silent remote-fetch failures
     const femaleNames = ['Samantha','Karen','Moira','Fiona','Victoria','Tessa','Allison','Ava','Susan','Kate','Serena','Kyoko','Yuna','Mei'];
-    const maleVoices = voices.filter(v => v.lang.startsWith('en') && !femaleNames.some(f => v.name.includes(f)));
-    jarvisVoice = maleVoices.find(v => v.name.includes('Daniel'))
-      || maleVoices.find(v => v.lang.startsWith('en-GB'))
-      || maleVoices[0]
-      || voices.find(v => v.name.includes('Daniel'))
+    const enMale = voices.filter(v => v.lang.startsWith('en') && !femaleNames.some(f => v.name.includes(f)));
+    const pool = isMobile ? enMale.filter(v => v.localService) : enMale;
+    jarvisVoice = pool.find(v => v.name.includes('Daniel'))
+      || pool.find(v => v.lang.startsWith('en-GB'))
+      || pool[0]
+      || enMale[0]
+      || voices.find(v => v.lang.startsWith('en'))
+      || voices[0]
       || null;
   }
 
@@ -1985,8 +1990,28 @@
     }, 1800);
   }
 
+  // ── Audio priming for mobile (iOS Safari requires gesture) ──
+  let audioPrimed = false;
+  function primeAudio() {
+    if (audioPrimed) return;
+    audioPrimed = true;
+    ensureAudio();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      try { audioCtx.resume(); } catch (_) {}
+    }
+    if (window.speechSynthesis) {
+      try {
+        // Silent utterance to unlock the speech engine within a user gesture.
+        const u = new SpeechSynthesisUtterance('.');
+        u.volume = 0; u.rate = 10;
+        speechSynthesis.speak(u);
+      } catch (_) {}
+    }
+  }
+
   document.getElementById('lock-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    primeAudio(); // run inside user gesture before async work
     const input = document.getElementById('passcode');
     const h = await hashCode(input.value);
     if (h === HASH) {
@@ -1999,10 +2024,29 @@
     }
   });
 
+  // Fallback: prime on first tap anywhere (covers session-restored loads with no unlock).
+  document.addEventListener('pointerdown', primeAudio, { once: true, passive: true });
+
   if (sessionStorage.getItem('dash_auth') === '1') {
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
-    requestAnimationFrame(() => { document.getElementById('dashboard').classList.add('visible'); initDashboard(); });
+    // Mobile session-restore: defer the briefing until first tap so audio works.
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && window.speechSynthesis) {
+      const tapHint = document.createElement('div');
+      tapHint.textContent = 'Tap to start';
+      tapHint.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 22px;background:rgba(0,200,255,0.12);border:1px solid rgba(0,200,255,0.45);border-radius:12px;color:#00e6ff;font-family:"SF Mono",monospace;letter-spacing:0.18em;text-transform:uppercase;font-size:12px;z-index:9999;backdrop-filter:blur(10px);';
+      document.body.appendChild(tapHint);
+      const start = () => {
+        tapHint.remove();
+        primeAudio();
+        document.getElementById('dashboard').classList.add('visible');
+        initDashboard();
+      };
+      document.addEventListener('pointerdown', start, { once: true });
+    } else {
+      requestAnimationFrame(() => { document.getElementById('dashboard').classList.add('visible'); initDashboard(); });
+    }
   }
 
   function updateClock() {
