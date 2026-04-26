@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JARVIS Voice Picker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e17;
+    --surface: rgba(17,24,39,0.6);
+    --border: rgba(0,200,255,0.18);
+    --border-bright: rgba(0,200,255,0.4);
+    --text: #f0f4f8;
+    --dim: #8a9bb5;
+    --cyan: #00e6ff;
+    --violet: #b496ff;
+    --pink: #ff66c4;
+    --good: #34d399;
+    --font: 'SF Mono', 'Fira Code', Consolas, monospace;
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  html, body {
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(0,80,140,0.22) 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { text-align: center; margin-bottom: 28px; }
+  h1 {
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    text-shadow: 0 0 18px rgba(0,200,255,0.45);
+    margin-bottom: 6px;
+  }
+  .sub { font-size: 13px; color: var(--dim); }
+  .current {
+    margin: 14px auto 22px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 13px;
+  }
+  .current b { color: var(--cyan); font-family: var(--font); }
+  .current .badge {
+    background: rgba(52,211,153,0.15);
+    color: var(--good);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 11px;
+    border: 1px solid rgba(52,211,153,0.3);
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  input[type="search"], select, textarea {
+    background: rgba(2,6,22,0.55);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.18s ease;
+  }
+  input[type="search"]:focus, select:focus, textarea:focus {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 0 3px rgba(0,200,255,0.08);
+  }
+  input[type="search"] { flex: 1; min-width: 200px; }
+  textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 56px;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .voice-list { display: flex; flex-direction: column; gap: 8px; }
+  .voice-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+    transition: border-color 0.18s ease, background 0.18s ease;
+  }
+  .voice-row:hover { border-color: var(--border-bright); }
+  .voice-row.selected {
+    border-color: var(--cyan);
+    background: linear-gradient(90deg, rgba(0,200,255,0.08), rgba(180,150,255,0.05));
+    box-shadow: 0 0 22px rgba(0,200,255,0.18);
+  }
+  .voice-row.playing {
+    border-color: var(--cyan);
+    box-shadow: 0 0 18px rgba(0,200,255,0.35);
+  }
+  .vinfo { min-width: 0; }
+  .vname {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .vmeta { font-size: 11px; color: var(--dim); font-family: var(--font); }
+  .tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-family: var(--font);
+    border: 1px solid;
+    margin-right: 4px;
+  }
+  .tag.local { color: var(--cyan); border-color: rgba(0,200,255,0.4); }
+  .tag.remote { color: var(--violet); border-color: rgba(180,150,255,0.4); }
+  .tag.default { color: var(--good); border-color: rgba(52,211,153,0.4); }
+  button {
+    background: rgba(0,200,255,0.08);
+    border: 1px solid rgba(0,200,255,0.28);
+    color: var(--cyan);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  button:hover { background: rgba(0,200,255,0.16); border-color: var(--border-bright); }
+  button.set {
+    color: var(--violet);
+    border-color: rgba(180,150,255,0.35);
+    background: rgba(180,150,255,0.06);
+  }
+  button.set:hover { background: rgba(180,150,255,0.16); }
+  button.set.active {
+    color: #fff;
+    background: linear-gradient(90deg, rgba(0,200,255,0.4), rgba(180,150,255,0.4));
+    border-color: rgba(0,200,255,0.7);
+  }
+  .empty { text-align: center; color: var(--dim); padding: 40px 20px; }
+  .footer-help {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--dim);
+    line-height: 1.7;
+  }
+  .footer-help a { color: var(--cyan); text-decoration: none; }
+  .footer-help a:hover { text-decoration: underline; }
+  .reset {
+    background: transparent;
+    color: var(--dim);
+    border-color: rgba(138,155,181,0.3);
+  }
+  .reset:hover { color: var(--text); border-color: var(--dim); }
+
+  @media (max-width: 600px) {
+    .voice-row { grid-template-columns: 1fr; }
+    .voice-row .row-actions { display: flex; gap: 8px; }
+    button { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>JARVIS · Voice Picker</h1>
+    <div class="sub">Preview installed voices, then save your pick for the dashboard.</div>
+    <div class="current" id="current-voice">Loading voices…</div>
+  </header>
+
+  <textarea id="sample-text" spellcheck="false">Good evening, Sir. All systems are online and standing by for your instructions.</textarea>
+
+  <div class="controls">
+    <input type="search" id="filter" placeholder="Filter by name or language (e.g. en-GB, Daniel)" />
+    <select id="lang-filter">
+      <option value="">All languages</option>
+    </select>
+    <button class="reset" id="reset-btn" type="button">Reset to default</button>
+  </div>
+
+  <div class="voice-list" id="list"></div>
+
+  <div class="footer-help">
+    선택된 목소리는 <code>localStorage.jarvis_voice</code>에 저장돼서<br/>
+    <a href="dashboard.html">dashboard.html</a>이 자동으로 사용합니다.
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'jarvis_voice';
+  const synth = window.speechSynthesis;
+  let voices = [];
+  let currentUtter = null;
+
+  const $list = document.getElementById('list');
+  const $filter = document.getElementById('filter');
+  const $lang = document.getElementById('lang-filter');
+  const $sample = document.getElementById('sample-text');
+  const $current = document.getElementById('current-voice');
+  const $reset = document.getElementById('reset-btn');
+
+  function loadVoices() {
+    voices = synth ? synth.getVoices() : [];
+    populateLangFilter();
+    render();
+    updateCurrent();
+  }
+
+  function populateLangFilter() {
+    const langs = Array.from(new Set(voices.map(v => v.lang))).sort();
+    const prev = $lang.value;
+    $lang.innerHTML = '<option value="">All languages</option>' +
+      langs.map(l => `<option value="${l}">${l}</option>`).join('');
+    $lang.value = prev;
+  }
+
+  function getSelectedName() {
+    return localStorage.getItem(STORAGE_KEY) || '';
+  }
+
+  function updateCurrent() {
+    const name = getSelectedName();
+    if (!name) {
+      $current.innerHTML = `Current: <b>auto</b> <span class="badge">DEFAULT</span>`;
+      return;
+    }
+    const v = voices.find(v => v.name === name);
+    $current.innerHTML = v
+      ? `Current: <b>${v.name}</b> <span class="badge">${v.lang}</span>`
+      : `Saved: <b>${name}</b> <span class="badge" style="color:#ff8b8b;border-color:rgba(255,139,139,0.4);background:rgba(255,139,139,0.1)">NOT INSTALLED</span>`;
+  }
+
+  function render() {
+    const q = $filter.value.trim().toLowerCase();
+    const lang = $lang.value;
+    const selectedName = getSelectedName();
+
+    const filtered = voices.filter(v => {
+      const hay = (v.name + ' ' + v.lang).toLowerCase();
+      if (q && !hay.includes(q)) return false;
+      if (lang && v.lang !== lang) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      $list.innerHTML = `<div class="empty">${voices.length ? 'No voices match the filter.' : 'No voices found. Your browser may not support Web Speech API, or voices are still loading.'}</div>`;
+      return;
+    }
+
+    $list.innerHTML = filtered.map((v, i) => {
+      const tags = [];
+      if (v.localService) tags.push('<span class="tag local">LOCAL</span>');
+      else tags.push('<span class="tag remote">REMOTE</span>');
+      if (v.default) tags.push('<span class="tag default">SYS DEFAULT</span>');
+      const isSelected = v.name === selectedName;
+      return `
+        <div class="voice-row ${isSelected ? 'selected' : ''}" data-name="${v.name.replace(/"/g, '&quot;')}">
+          <div class="vinfo">
+            <div class="vname">${v.name}</div>
+            <div class="vmeta">${tags.join('')} ${v.lang}</div>
+          </div>
+          <button class="play" type="button">▶ Play</button>
+          <button class="set ${isSelected ? 'active' : ''}" type="button">${isSelected ? '✓ Selected' : 'Set as Jarvis'}</button>
+        </div>`;
+    }).join('');
+  }
+
+  $list.addEventListener('click', (e) => {
+    const row = e.target.closest('.voice-row');
+    if (!row) return;
+    const name = row.dataset.name;
+    const voice = voices.find(v => v.name === name);
+    if (!voice) return;
+
+    if (e.target.matches('.play')) {
+      synth.cancel();
+      document.querySelectorAll('.voice-row.playing').forEach(r => r.classList.remove('playing'));
+      const utter = new SpeechSynthesisUtterance($sample.value || 'Hello, Sir.');
+      utter.voice = voice;
+      utter.rate = 1.0;
+      utter.pitch = 0.95;
+      utter.volume = 1.0;
+      utter.onend = () => row.classList.remove('playing');
+      utter.onerror = () => row.classList.remove('playing');
+      currentUtter = utter;
+      row.classList.add('playing');
+      synth.speak(utter);
+    } else if (e.target.matches('.set')) {
+      localStorage.setItem(STORAGE_KEY, name);
+      render();
+      updateCurrent();
+    }
+  });
+
+  $filter.addEventListener('input', render);
+  $lang.addEventListener('change', render);
+
+  $reset.addEventListener('click', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+    updateCurrent();
+  });
+
+  if (synth) {
+    synth.onvoiceschanged = loadVoices;
+    loadVoices();
+  } else {
+    $current.textContent = 'Web Speech API not supported in this browser.';
+  }
+</script>
+</body>
+</html>
