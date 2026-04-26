@@ -1949,7 +1949,8 @@
       }, readTime + 250);
     };
 
-    setTimeout(() => processLine(0), 600);
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setTimeout(() => processLine(0), isMobile ? 80 : 600);
   }
 
   // Mute + captions controls (accessibility)
@@ -1982,13 +1983,22 @@
     buildStats();
     buildPanels();
     animatePanels();
-    setTimeout(buildBriefing, 800);
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setTimeout(buildBriefing, isMobile ? 100 : 800);
   }
 
   function bootSequence() {
     const overlay = document.getElementById('boot-overlay');
     const dashboard = document.getElementById('dashboard');
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     document.getElementById('lock-screen').style.display = 'none';
+    // Skip boot overlay on mobile so the first speak() fires within iOS's
+    // gesture window (long boot animation drops the gesture).
+    if (isMobile) {
+      dashboard.style.display = 'block';
+      requestAnimationFrame(() => { dashboard.classList.add('visible'); initDashboard(); });
+      return;
+    }
     overlay.style.display = 'flex';
     overlay.querySelectorAll('.boot-text').forEach(line => {
       setTimeout(() => line.classList.add('show'), +line.dataset.delay);
@@ -2011,13 +2021,15 @@
     }
     if (window.speechSynthesis) {
       try {
-        // iOS unlocks speechSynthesis after first successful speak() in a
-        // gesture. volume:0 is sometimes rejected — use 0.01 with real text.
+        // iOS unlocks speechSynthesis only after an actually-played utterance
+        // in the gesture. Use audible volume + very fast rate so it's almost
+        // imperceptible but counts as real playback.
         speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance('hi');
+        const u = new SpeechSynthesisUtterance('Hi.');
         u.lang = 'en-US';
-        u.volume = 0.01;
-        u.rate = 1;
+        u.volume = 0.4;
+        u.rate = 10;
+        u.pitch = 1;
         speechSynthesis.speak(u);
       } catch (_) {}
     }
