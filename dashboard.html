@@ -6,6 +6,8 @@
   <title>Project Dashboard</title>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -194,16 +196,11 @@
 
     #dashboard.visible { opacity: 1; }
 
-    #dashboard::before {
-      content: '';
+    #jarvis-bg {
       position: fixed;
       inset: 0;
-      background:
-        linear-gradient(rgba(0,200,255,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,200,255,0.02) 1px, transparent 1px);
-      background-size: 60px 60px;
-      pointer-events: none;
       z-index: 0;
+      pointer-events: none;
     }
 
     #scanline {
@@ -620,6 +617,99 @@
 
     .tooltip .tt-count { color: var(--cyan); font-weight: 700; }
 
+    /* ── JARVIS 3D FACE ── */
+    .jarvis-face {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 280px;
+      z-index: 60;
+      pointer-events: none;
+    }
+
+    #face-3d-canvas {
+      width: 280px;
+      height: 320px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .face-voice {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      margin-top: 6px;
+      height: 24px;
+    }
+
+    .face-voice .bar {
+      width: 2.5px;
+      background: linear-gradient(180deg, rgba(0,200,255,0.5), rgba(0,200,255,0.15));
+      border-radius: 2px;
+      animation: voice-bar 0.8s ease-in-out infinite alternate;
+      box-shadow: 0 0 6px rgba(0,200,255,0.25);
+    }
+
+    @keyframes voice-bar {
+      0% { height: 3px; }
+      100% { height: 20px; }
+    }
+
+    .face-label {
+      text-align: center;
+      margin-top: 6px;
+    }
+
+    .face-label .name {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      color: rgba(0,200,255,0.55);
+      text-shadow: 0 0 15px rgba(0,200,255,0.35);
+    }
+
+    .face-label .sub {
+      font-family: var(--font);
+      font-size: 8px;
+      letter-spacing: 0.2em;
+      color: rgba(0,200,255,0.25);
+      margin-top: 2px;
+    }
+
+    .face-report {
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: rgba(0,200,255,0.04);
+      border: 1px solid rgba(0,200,255,0.12);
+      border-radius: 8px;
+      min-height: 44px;
+    }
+
+    .face-report-text {
+      font-family: var(--font);
+      font-size: 9px;
+      line-height: 1.6;
+      color: rgba(0,200,255,0.45);
+      letter-spacing: 0.02em;
+    }
+
+    .face-report-text .cursor {
+      display: inline-block;
+      width: 5px;
+      height: 10px;
+      background: rgba(0,200,255,0.5);
+      margin-left: 2px;
+      animation: blink-cursor 0.8s step-end infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes blink-cursor {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       .heatmap-panel { padding: 16px; }
@@ -658,6 +748,7 @@
 </div>
 
 <div id="dashboard">
+  <canvas id="jarvis-bg"></canvas>
   <div id="scanline"></div>
   <div class="hud-tl"></div><div class="hud-tr"></div><div class="hud-bl"></div><div class="hud-br"></div>
   <div id="tooltip" class="tooltip"></div>
@@ -673,6 +764,19 @@
         <span class="dash-time" id="live-time"></span>
         <a href="https://luanpao82.github.io/" class="dash-back">Exit</a>
       </div>
+    </div>
+  </div>
+
+  <!-- JARVIS 3D FACE -->
+  <div class="jarvis-face" id="jarvis-face" style="display:none;">
+    <canvas id="face-3d-canvas"></canvas>
+    <div class="face-voice" id="face-voice"></div>
+    <div class="face-label">
+      <div class="name">J.A.R.V.I.S.</div>
+      <div class="sub">VOICE INTERFACE ACTIVE</div>
+    </div>
+    <div class="face-report">
+      <div class="face-report-text" id="face-report-text"><span class="cursor"></span></div>
     </div>
   </div>
 
@@ -946,12 +1050,202 @@
 
   const HASH = '3ba447072b1bcb90321f2ed1d549832955a19dacb57c4c068f9f6367c6387ff0';
 
+  function initJarvisFace() {
+    const face = document.getElementById('jarvis-face');
+    const voiceEl = document.getElementById('face-voice');
+    const canvasEl = document.getElementById('face-3d-canvas');
+    if (!face || !voiceEl || !canvasEl) return;
+
+    // Voice bars
+    let html = '';
+    for (let i = 0; i < 36; i++) {
+      const delay = (Math.sin(i * 0.5) * 0.3 + 0.4).toFixed(2);
+      const dur = (0.5 + Math.random() * 0.6).toFixed(2);
+      html += `<div class="bar" style="animation-delay:${delay}s;animation-duration:${dur}s;"></div>`;
+    }
+    voiceEl.innerHTML = html;
+
+    // ── Three.js 3D Head (GLB model) ──
+    const W3 = 280, H3 = 320;
+    const renderer = new THREE.WebGLRenderer({ canvas: canvasEl, alpha: true, antialias: true });
+    renderer.setSize(W3, H3);
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(22, W3 / H3, 0.1, 100);
+    camera.position.set(0, 0, 4);
+
+    const headGroup = new THREE.Group();
+    scene.add(headGroup);
+
+    // Materials
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true, transparent: true, opacity: 0.18 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00c8ff, transparent: true, opacity: 0.04, side: THREE.BackSide });
+    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x00e0ff, wireframe: true, transparent: true, opacity: 0.05 });
+
+    // Load GLB head model
+    const loader = new THREE.GLTFLoader();
+    loader.load('head.glb', function(gltf) {
+      const model = gltf.scene;
+
+      model.traverse(function(child) {
+        if (child.isMesh) {
+          // Wireframe version
+          child.material = wireMat;
+
+          // Inner glow duplicate
+          const glowMesh = child.clone();
+          glowMesh.material = glowMat;
+          glowMesh.scale.multiplyScalar(1.02);
+          headGroup.add(glowMesh);
+
+          // Edge highlight duplicate
+          const edgeMesh = child.clone();
+          edgeMesh.material = edgeMat;
+          edgeMesh.scale.multiplyScalar(1.005);
+          headGroup.add(edgeMesh);
+        }
+      });
+
+      headGroup.add(model);
+    });
+
+    // ── Orbiting rings ──
+    const ring1 = new THREE.Mesh(
+      new THREE.TorusGeometry(1.4, 0.004, 8, 100),
+      new THREE.MeshBasicMaterial({ color: 0x00c8ff, transparent: true, opacity: 0.18 })
+    );
+    ring1.rotation.x = 1.3;
+    scene.add(ring1);
+
+    const ring2 = new THREE.Mesh(
+      new THREE.TorusGeometry(1.55, 0.003, 8, 100),
+      new THREE.MeshBasicMaterial({ color: 0x00c8ff, transparent: true, opacity: 0.08 })
+    );
+    ring2.rotation.x = 1.6; ring2.rotation.z = 0.4;
+    scene.add(ring2);
+
+    const ring3 = new THREE.Mesh(
+      new THREE.TorusGeometry(1.7, 0.002, 8, 100),
+      new THREE.MeshBasicMaterial({ color: 0x00c8ff, transparent: true, opacity: 0.04 })
+    );
+    ring3.rotation.x = 0.8; ring3.rotation.y = 0.5;
+    scene.add(ring3);
+
+    // ── Floating particles ──
+    const dots = [];
+    for (let i = 0; i < 50; i++) {
+      const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.012, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0x00c8ff, transparent: true, opacity: 0.15 + Math.random() * 0.35 })
+      );
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI;
+      const r = 1.3 + Math.random() * 0.7;
+      dot.position.set(r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+      dot.userData = { theta, phi, r, speed: 0.001 + Math.random() * 0.004 };
+      scene.add(dot);
+      dots.push(dot);
+    }
+
+    // ── Animation ──
+    let t = 0;
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+      t += 0.016;
+
+      // Head gentle movement
+      headGroup.rotation.y = Math.sin(t * 0.25) * 0.25;
+      headGroup.rotation.x = Math.sin(t * 0.18) * 0.08;
+      headGroup.rotation.z = Math.sin(t * 0.12) * 0.03;
+
+      // Wireframe pulse
+      wireMat.opacity = 0.15 + Math.sin(t * 0.7) * 0.05;
+      glowMat.opacity = 0.03 + Math.sin(t * 0.5) * 0.02;
+
+      // Rings
+      ring1.rotation.z += 0.002;
+      ring2.rotation.z -= 0.0015;
+      ring3.rotation.z += 0.001;
+
+      // Particles orbit
+      for (const dot of dots) {
+        const d = dot.userData;
+        d.theta += d.speed;
+        dot.position.x = d.r * Math.sin(d.phi) * Math.cos(d.theta);
+        dot.position.z = d.r * Math.sin(d.phi) * Math.sin(d.theta);
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate3D();
+
+    // Show face
+    face.style.display = 'block';
+    face.style.opacity = '0';
+    face.style.transform = 'translateY(20px)';
+    face.style.transition = 'opacity 1s ease, transform 1s ease';
+    setTimeout(() => {
+      face.style.opacity = '1';
+      face.style.transform = 'translateY(0)';
+      startReportTyping();
+    }, 800);
+  }
+
+  function startReportTyping() {
+    const el = document.getElementById('face-report-text');
+    if (!el) return;
+
+    const reports = [
+      'Good evening, sir. All systems are operational. 5 project repositories synced successfully.',
+      'Asian Nonprofit Research updated 1 day ago. LDA models for Turkey, Vietnam, and China have been recalibrated.',
+      'Anti-criminalization by CoC: Stage 2 narrative review dashboard deployed on April 18.',
+      'ARNOVA database stable at v1.0.0. 5,591 presentations indexed across 14 conference years.',
+      'State Immigration Policy site redesigned to v4.0. All data coverage at 95-100%.',
+      'Policy Signals analysis complete. Crowding-out effects confirmed across 220 counties.',
+      'No anomalies detected. Next scheduled sync in approximately 14 hours.',
+    ];
+
+    let reportIdx = 0;
+    let charIdx = 0;
+    let deleting = false;
+    let pauseTimer = 0;
+
+    function tick() {
+      const msg = reports[reportIdx];
+
+      if (!deleting) {
+        if (charIdx <= msg.length) {
+          el.innerHTML = msg.slice(0, charIdx) + '<span class="cursor"></span>';
+          charIdx++;
+          setTimeout(tick, 30 + Math.random() * 40);
+        } else {
+          pauseTimer = setTimeout(() => { deleting = true; tick(); }, 4000);
+        }
+      } else {
+        if (charIdx > 0) {
+          charIdx -= 2;
+          if (charIdx < 0) charIdx = 0;
+          el.innerHTML = msg.slice(0, charIdx) + '<span class="cursor"></span>';
+          setTimeout(tick, 15);
+        } else {
+          deleting = false;
+          reportIdx = (reportIdx + 1) % reports.length;
+          setTimeout(tick, 500);
+        }
+      }
+    }
+
+    setTimeout(tick, 1500);
+  }
+
   function initDashboard() {
     buildHeatmap();
     buildLog();
     initTooltip();
     animatePanels();
     setTimeout(animateBars, 600);
+    initJarvisFace();
   }
 
   function bootSequence() {
@@ -970,6 +1264,7 @@
       requestAnimationFrame(() => {
         dashboard.classList.add('visible');
         document.getElementById('scanline').classList.add('scanline-run');
+        if (window.startJarvis) window.startJarvis();
         initDashboard();
       });
     }, 1800);
@@ -994,6 +1289,7 @@
     document.getElementById('dashboard').style.display = 'block';
     requestAnimationFrame(() => {
       document.getElementById('dashboard').classList.add('visible');
+      if (window.startJarvis) window.startJarvis();
       initDashboard();
     });
   }
@@ -1007,6 +1303,490 @@
   }
   updateClock();
   setInterval(updateClock, 1000);
+
+  // ── JARVIS BACKGROUND ENGINE ──
+  (function() {
+    const canvas = document.getElementById('jarvis-bg');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, dpr, frame = 0;
+    const monoFont = "'SF Mono','Fira Code','Consolas',monospace";
+
+    function resize() {
+      dpr = window.devicePixelRatio || 1;
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const TAU = Math.PI * 2;
+    function cy(a) { return `rgba(0,200,255,${a})`; }
+    function oy(a) { return `rgba(255,160,40,${a})`; }
+
+    // ══════════════════════════════════════
+    //  1. CENTRAL ARC REACTOR HUD
+    // ══════════════════════════════════════
+    function drawArcReactor(t) {
+      const cx_ = W * 0.5;
+      const cy_ = H * 0.48;
+      const base = Math.min(W, H) * 0.32;
+
+      // Outer glow
+      const grd = ctx.createRadialGradient(cx_, cy_, base * 0.2, cx_, cy_, base * 1.2);
+      grd.addColorStop(0, 'rgba(0,200,255,0.04)');
+      grd.addColorStop(1, 'rgba(0,200,255,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(cx_, cy_, base * 1.2, 0, TAU);
+      ctx.fill();
+
+      // Concentric rings with dashes
+      const ringDefs = [
+        { r: 1.0,  w: 1.5, segs: 60, gap: 0.3,  spd: 0.001,  alpha: 0.18 },
+        { r: 0.88, w: 2.0, segs: 4,  gap: 0.15, spd: -0.0015, alpha: 0.22 },
+        { r: 0.75, w: 1.0, segs: 36, gap: 0.4,  spd: 0.002,  alpha: 0.12 },
+        { r: 0.62, w: 2.5, segs: 3,  gap: 0.2,  spd: -0.003, alpha: 0.25 },
+        { r: 0.48, w: 1.0, segs: 24, gap: 0.35, spd: 0.004,  alpha: 0.10 },
+        { r: 0.35, w: 1.5, segs: 6,  gap: 0.1,  spd: -0.005, alpha: 0.20 },
+        { r: 0.22, w: 1.0, segs: 12, gap: 0.3,  spd: 0.006,  alpha: 0.15 },
+      ];
+
+      for (const rd of ringDefs) {
+        const r = base * rd.r;
+        const segAngle = TAU / rd.segs;
+        const arcLen = segAngle * (1 - rd.gap);
+        const offset = t * rd.spd * TAU;
+        ctx.strokeStyle = cy(rd.alpha);
+        ctx.lineWidth = rd.w;
+        for (let i = 0; i < rd.segs; i++) {
+          const start = offset + i * segAngle;
+          ctx.beginPath();
+          ctx.arc(cx_, cy_, r, start, start + arcLen);
+          ctx.stroke();
+        }
+      }
+
+      // Tick marks on outer ring
+      ctx.strokeStyle = cy(0.15);
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 72; i++) {
+        const a = (TAU / 72) * i + t * 0.001;
+        const inner = base * 0.95;
+        const outer = base * (i % 6 === 0 ? 1.05 : 1.0);
+        ctx.beginPath();
+        ctx.moveTo(cx_ + Math.cos(a) * inner, cy_ + Math.sin(a) * inner);
+        ctx.lineTo(cx_ + Math.cos(a) * outer, cy_ + Math.sin(a) * outer);
+        ctx.stroke();
+      }
+
+      // Degree labels at cardinal points
+      ctx.fillStyle = cy(0.2);
+      ctx.font = `9px ${monoFont}`;
+      ctx.textAlign = 'center';
+      const labels = ['000','090','180','270'];
+      for (let i = 0; i < 4; i++) {
+        const a = -Math.PI / 2 + (TAU / 4) * i;
+        const lr = base * 1.1;
+        ctx.fillText(labels[i], cx_ + Math.cos(a) * lr, cy_ + Math.sin(a) * lr + 3);
+      }
+      ctx.textAlign = 'left';
+
+      // Pulsing core
+      const coreAlpha = 0.06 + Math.sin(t * 0.03) * 0.03;
+      const coreGrd = ctx.createRadialGradient(cx_, cy_, 0, cx_, cy_, base * 0.2);
+      coreGrd.addColorStop(0, cy(coreAlpha * 2));
+      coreGrd.addColorStop(1, cy(0));
+      ctx.fillStyle = coreGrd;
+      ctx.beginPath();
+      ctx.arc(cx_, cy_, base * 0.2, 0, TAU);
+      ctx.fill();
+
+      // Crosshair
+      ctx.strokeStyle = cy(0.08);
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([4, 8]);
+      ctx.beginPath();
+      ctx.moveTo(cx_ - base, cy_); ctx.lineTo(cx_ + base, cy_);
+      ctx.moveTo(cx_, cy_ - base); ctx.lineTo(cx_, cy_ + base);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Orbiting dots
+      for (let i = 0; i < 5; i++) {
+        const a = t * (0.005 + i * 0.002) * TAU + i * 1.2;
+        const r2 = base * (0.3 + i * 0.15);
+        const dx = cx_ + Math.cos(a) * r2;
+        const dy = cy_ + Math.sin(a) * r2;
+        ctx.fillStyle = cy(0.35);
+        ctx.beginPath();
+        ctx.arc(dx, dy, 2.5, 0, TAU);
+        ctx.fill();
+        // trail
+        for (let j = 1; j <= 8; j++) {
+          const ta = a - j * 0.05;
+          ctx.fillStyle = cy(0.25 - j * 0.03);
+          ctx.beginPath();
+          ctx.arc(cx_ + Math.cos(ta) * r2, cy_ + Math.sin(ta) * r2, 1.5, 0, TAU);
+          ctx.fill();
+        }
+      }
+    }
+
+    // ══════════════════════════════════════
+    //  2. LEFT PANEL — Waveforms + bars
+    // ══════════════════════════════════════
+    function drawLeftPanel(t) {
+      const px = W * 0.03;
+      const py = H * 0.10;
+      const pw = W * 0.18;
+      const ph = H * 0.38;
+
+      // Panel border
+      ctx.strokeStyle = cy(0.12);
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(px, py, pw, ph);
+
+      // Corner accents
+      const cl = 10;
+      ctx.strokeStyle = cy(0.35);
+      ctx.lineWidth = 1.5;
+      [[px,py,1,1],[px+pw,py,-1,1],[px,py+ph,1,-1],[px+pw,py+ph,-1,-1]].forEach(([x,y,dx,dy]) => {
+        ctx.beginPath();
+        ctx.moveTo(x, y + dy*cl); ctx.lineTo(x, y); ctx.lineTo(x + dx*cl, y);
+        ctx.stroke();
+      });
+
+      // Title
+      ctx.fillStyle = cy(0.3);
+      ctx.font = `bold 9px ${monoFont}`;
+      ctx.fillText('SIGNAL ANALYSIS', px + 10, py + 16);
+
+      // Three waveforms
+      for (let w = 0; w < 3; w++) {
+        const wy = py + 35 + w * 55;
+        const ww = pw - 20;
+        const freq = 0.04 + w * 0.015;
+        const spd = 1.5 + w * 0.8;
+        const amp = 18;
+
+        // axis
+        ctx.strokeStyle = cy(0.08);
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(px + 10, wy); ctx.lineTo(px + 10 + ww, wy);
+        ctx.stroke();
+
+        // wave
+        ctx.strokeStyle = cy(0.3);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let i = 0; i <= ww; i += 2) {
+          const v = Math.sin(i * freq + t * 0.015 * spd) * amp +
+                    Math.sin(i * freq * 2.3 + t * 0.01) * amp * 0.3;
+          const x = px + 10 + i;
+          const y = wy + v;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // glow fill under wave
+        ctx.save();
+        ctx.globalAlpha = 0.06;
+        ctx.fillStyle = cy(1);
+        ctx.lineTo(px + 10 + ww, wy);
+        ctx.lineTo(px + 10, wy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // label
+        ctx.fillStyle = cy(0.2);
+        ctx.font = `8px ${monoFont}`;
+        ctx.fillText(`CH-${w + 1}  ${(freq * 1000).toFixed(0)}Hz`, px + 10, wy - amp - 4);
+      }
+
+      // Bar chart
+      const by = py + 210;
+      ctx.fillStyle = cy(0.2);
+      ctx.font = `bold 9px ${monoFont}`;
+      ctx.fillText('FREQ SPECTRUM', px + 10, by);
+
+      const barCount = 24;
+      const barW = (pw - 30) / barCount;
+      for (let i = 0; i < barCount; i++) {
+        const h = (Math.sin(i * 0.4 + t * 0.025) * 0.5 + 0.5) * 60 +
+                  (Math.sin(i * 0.8 + t * 0.04) * 0.3 + 0.3) * 20;
+        const x = px + 10 + i * barW;
+        const y = by + 15;
+        const alpha = 0.12 + (h / 80) * 0.2;
+        ctx.fillStyle = cy(alpha);
+        ctx.fillRect(x, y + 80 - h, barW - 1, h);
+      }
+    }
+
+    // ══════════════════════════════════════
+    //  3. RIGHT PANEL — Radar + gauges
+    // ══════════════════════════════════════
+    function drawRightPanel(t) {
+      const px = W * 0.79;
+      const py = H * 0.12;
+      const pw = W * 0.18;
+      const ph = H * 0.55;
+
+      // Panel border
+      ctx.strokeStyle = cy(0.12);
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(px, py, pw, ph);
+
+      // Corner accents
+      const cl = 10;
+      ctx.strokeStyle = cy(0.35);
+      ctx.lineWidth = 1.5;
+      [[px,py,1,1],[px+pw,py,-1,1],[px,py+ph,1,-1],[px+pw,py+ph,-1,-1]].forEach(([x,y,dx,dy]) => {
+        ctx.beginPath();
+        ctx.moveTo(x, y + dy*cl); ctx.lineTo(x, y); ctx.lineTo(x + dx*cl, y);
+        ctx.stroke();
+      });
+
+      // RADAR
+      const rcx = px + pw / 2;
+      const rcy = py + pw / 2 + 10;
+      const rr = pw * 0.35;
+
+      ctx.fillStyle = cy(0.2);
+      ctx.font = `bold 9px ${monoFont}`;
+      ctx.fillText('SCAN RADAR', px + 10, py + 16);
+
+      // Radar circles
+      for (let i = 1; i <= 3; i++) {
+        ctx.strokeStyle = cy(0.1);
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.arc(rcx, rcy, rr * i / 3, 0, TAU);
+        ctx.stroke();
+      }
+
+      // Cross
+      ctx.strokeStyle = cy(0.08);
+      ctx.beginPath();
+      ctx.moveTo(rcx - rr, rcy); ctx.lineTo(rcx + rr, rcy);
+      ctx.moveTo(rcx, rcy - rr); ctx.lineTo(rcx, rcy + rr);
+      ctx.stroke();
+
+      // Sweep
+      const sweepAngle = (t * 0.02) % TAU;
+      ctx.save();
+      for (let i = 0; i <= 30; i++) {
+        const a = sweepAngle - i * 0.04;
+        ctx.globalAlpha = 0.3 * (1 - i / 30);
+        ctx.strokeStyle = cy(1);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(rcx, rcy);
+        ctx.lineTo(rcx + Math.cos(a) * rr, rcy + Math.sin(a) * rr);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Blips
+      const blips = [[0.3, 0.6], [0.7, 0.2], [0.5, 0.8], [0.2, 0.4]];
+      for (const [bx, by] of blips) {
+        const ba = Math.atan2(by - 0.5, bx - 0.5);
+        const bd = Math.sqrt((bx-0.5)**2 + (by-0.5)**2) * 2 * rr;
+        const angleDiff = ((sweepAngle - ba) % TAU + TAU) % TAU;
+        if (angleDiff < 0.8) {
+          const fade = 1 - angleDiff / 0.8;
+          ctx.fillStyle = cy(0.4 * fade);
+          ctx.beginPath();
+          ctx.arc(rcx + Math.cos(ba) * bd, rcy + Math.sin(ba) * bd, 3, 0, TAU);
+          ctx.fill();
+        }
+      }
+
+      // Three gauges below radar
+      const gy = rcy + rr + 30;
+      const gaugeLabels = ['CPU','MEM','NET'];
+      const gaugeW = (pw - 40) / 3;
+
+      for (let i = 0; i < 3; i++) {
+        const gx = px + 15 + i * (gaugeW + 8);
+        const val = Math.sin(t * (0.008 + i * 0.003) + i * 2) * 0.5 + 0.5;
+        const gr = gaugeW * 0.4;
+        const gcx = gx + gaugeW / 2;
+        const gcy = gy + 10;
+
+        // track
+        ctx.strokeStyle = cy(0.1);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(gcx, gcy, gr, Math.PI * 0.8, Math.PI * 2.2);
+        ctx.stroke();
+
+        // fill
+        const range = Math.PI * 1.4;
+        ctx.strokeStyle = cy(0.4);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(gcx, gcy, gr, Math.PI * 0.8, Math.PI * 0.8 + range * val);
+        ctx.stroke();
+
+        // value
+        ctx.fillStyle = cy(0.35);
+        ctx.font = `bold 10px ${monoFont}`;
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(val * 100), gcx, gcy + 4);
+        ctx.font = `8px ${monoFont}`;
+        ctx.fillStyle = cy(0.2);
+        ctx.fillText(gaugeLabels[i], gcx, gcy + gr + 14);
+        ctx.textAlign = 'left';
+      }
+
+      // Hex data block
+      const hy = gy + 70;
+      ctx.fillStyle = cy(0.2);
+      ctx.font = `bold 9px ${monoFont}`;
+      ctx.fillText('DATA STREAM', px + 10, hy);
+
+      ctx.font = `9px ${monoFont}`;
+      for (let row = 0; row < 5; row++) {
+        let line = '';
+        for (let col = 0; col < 8; col++) {
+          const v = (Math.sin(t * 0.02 + row * 3 + col * 7) * 128 + 128) | 0;
+          line += v.toString(16).toUpperCase().padStart(2, '0') + ' ';
+        }
+        const alpha = 0.12 + Math.sin(t * 0.01 + row) * 0.05;
+        ctx.fillStyle = cy(alpha);
+        ctx.fillText(line, px + 10, hy + 16 + row * 14);
+      }
+    }
+
+    // ══════════════════════════════════════
+    //  4. BOTTOM STATUS BAR
+    // ══════════════════════════════════════
+    function drawBottomBar(t) {
+      const by = H * 0.88;
+      const bx = W * 0.25;
+      const bw = W * 0.5;
+
+      // Line
+      ctx.strokeStyle = cy(0.1);
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by);
+      ctx.stroke();
+
+      // Running text
+      const labels = ['SYS NOMINAL','UPLINK ACTIVE','SCAN COMPLETE','5 REPOS SYNCED','SHIELD: 100%'];
+      const idx = Math.floor(t * 0.005) % labels.length;
+      const charCount = Math.floor(t * 0.3) % (labels[idx].length + 10);
+
+      ctx.fillStyle = cy(0.2);
+      ctx.font = `10px ${monoFont}`;
+      ctx.textAlign = 'center';
+      const displayText = labels[idx].slice(0, charCount);
+      ctx.fillText(displayText + (Math.floor(t * 0.05) % 2 === 0 ? '_' : ''), W * 0.5, by + 16);
+      ctx.textAlign = 'left';
+
+      // Small dots along bar
+      for (let i = 0; i <= 20; i++) {
+        const dx = bx + (bw / 20) * i;
+        const pulse = Math.sin(t * 0.03 + i * 0.5) * 0.5 + 0.5;
+        ctx.fillStyle = cy(0.08 + pulse * 0.12);
+        ctx.beginPath();
+        ctx.arc(dx, by, 1.5, 0, TAU);
+        ctx.fill();
+      }
+    }
+
+    // ══════════════════════════════════════
+    //  5. FLOATING PARTICLES
+    // ══════════════════════════════════════
+    const particles = Array.from({ length: 50 }, () => ({
+      x: Math.random() * 2000,
+      y: Math.random() * 2000,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      size: Math.random() * 2 + 0.5,
+      alpha: Math.random() * 0.12 + 0.04,
+    }));
+
+    function drawParticles() {
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        ctx.fillStyle = cy(p.alpha);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, TAU);
+        ctx.fill();
+      }
+      // Connections
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 20000) {
+            ctx.strokeStyle = cy(0.04 * (1 - d2 / 20000));
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // ══════════════════════════════════════
+    //  6. GRID
+    // ══════════════════════════════════════
+    function drawGrid() {
+      ctx.strokeStyle = cy(0.035);
+      ctx.lineWidth = 0.5;
+      const step = 60;
+      for (let x = 0; x < W; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+    }
+
+    // ══════════════════════════════════════
+    //  MAIN LOOP
+    // ══════════════════════════════════════
+    let running = false;
+
+    function render() {
+      if (!running) return;
+      ctx.clearRect(0, 0, W, H);
+      frame++;
+      drawGrid();
+      drawArcReactor(frame);
+      drawParticles();
+      drawLeftPanel(frame);
+      drawRightPanel(frame);
+      drawBottomBar(frame);
+      requestAnimationFrame(render);
+    }
+
+    window.startJarvis = function() {
+      if (running) return;
+      running = true;
+      resize();
+      for (const p of particles) { p.x = Math.random() * W; p.y = Math.random() * H; }
+      render();
+    };
+    window.stopJarvis = function() { running = false; };
+  })();
 </script>
 </body>
 </html>
