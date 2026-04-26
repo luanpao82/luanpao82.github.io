@@ -624,6 +624,47 @@
       margin-bottom: 20px;
     }
 
+    .jarvis-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid #0a0e17;
+      background: #0a0e17;
+      color: #00c8ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .jarvis-btn:hover {
+      box-shadow: 0 0 12px rgba(0, 200, 255, 0.4), 0 0 24px rgba(0, 200, 255, 0.15);
+      border-color: rgba(0, 200, 255, 0.5);
+      text-decoration: none;
+      transform: translateY(-2px);
+    }
+
+    .jarvis-btn::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+
+    .jarvis-btn:hover::after {
+      border-color: rgba(0, 200, 255, 0.2);
+      animation: jarvis-ring 1.5s ease-in-out infinite;
+    }
+
+    @keyframes jarvis-ring {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.4; }
+    }
+
     .carousel-btn {
       width: 36px;
       height: 36px;
@@ -866,6 +907,9 @@
     <p class="section-label">Projects</p>
     <h2 class="section-title">Current Projects</h2>
     <div class="carousel-nav">
+      <a href="dashboard.html" class="jarvis-btn" title="Project Dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </a>
       <button class="carousel-btn" onclick="scrollProject(-1)">&#8592;</button>
       <button class="carousel-btn" onclick="scrollProject(1)">&#8594;</button>
     </div>

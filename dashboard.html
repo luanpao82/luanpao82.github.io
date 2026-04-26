@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Dashboard</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface-2: #1a2332;
+      --border: rgba(0, 200, 255, 0.12);
+      --border-bright: rgba(0, 200, 255, 0.3);
+      --text: #e0e8f0;
+      --text-dim: #6b7d94;
+      --cyan: #00c8ff;
+      --cyan-glow: rgba(0, 200, 255, 0.4);
+      --orange: #ff8c00;
+      --font: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── LOCK SCREEN ── */
+    #lock-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg);
+      position: relative;
+    }
+
+    #lock-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(0,200,255,0.03) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,200,255,0.015) 2px, rgba(0,200,255,0.015) 4px);
+      pointer-events: none;
+    }
+
+    .lock-box {
+      text-align: center;
+      max-width: 380px;
+      padding: 48px 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .lock-arc {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 32px;
+      position: relative;
+    }
+
+    .lock-arc svg {
+      width: 100%;
+      height: 100%;
+      animation: arc-spin 4s linear infinite;
+    }
+
+    @keyframes arc-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .lock-arc .arc-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--cyan);
+      text-shadow: 0 0 20px var(--cyan-glow);
+    }
+
+    .lock-box h1 {
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      text-shadow: 0 0 20px var(--cyan-glow);
+      margin-bottom: 4px;
+    }
+
+    .lock-box p { font-size: 13px; color: var(--text-dim); margin-bottom: 28px; }
+
+    .lock-input {
+      width: 100%;
+      padding: 14px 20px;
+      background: rgba(0,200,255,0.04);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      font-size: 18px;
+      font-family: var(--font);
+      color: var(--cyan);
+      text-align: center;
+      letter-spacing: 0.3em;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      -webkit-text-security: disc;
+    }
+
+    .lock-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px var(--cyan-glow), inset 0 0 20px rgba(0,200,255,0.05);
+    }
+
+    .lock-input.shake {
+      animation: shake 0.4s ease;
+      border-color: #ff3b30;
+      box-shadow: 0 0 20px rgba(255,59,48,0.3);
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    .lock-btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 13px;
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      background: rgba(0,200,255,0.08);
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .lock-btn:hover {
+      background: rgba(0,200,255,0.15);
+      box-shadow: 0 0 30px var(--cyan-glow);
+    }
+
+    /* ── BOOT ── */
+    #boot-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .boot-text {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan-glow);
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    .boot-text.show {
+      opacity: 1;
+      transform: translateY(0);
+      transition: all 0.3s ease;
+    }
+
+    /* ── DASHBOARD ── */
+    #dashboard {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+
+    #dashboard.visible { opacity: 1; }
+
+    #dashboard::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(rgba(0,200,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,200,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #scanline {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 20px var(--cyan-glow), 0 0 60px var(--cyan-glow);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scanline-run { animation: scanline-move 2s ease-in-out; }
+
+    @keyframes scanline-move {
+      0% { top: 0; opacity: 0.8; }
+      100% { top: 100vh; opacity: 0; }
+    }
+
+    /* HUD corners */
+    .hud-tl, .hud-tr, .hud-bl, .hud-br {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .hud-tl { top: 8px; left: 8px; border-top: 1px solid var(--border-bright); border-left: 1px solid var(--border-bright); }
+    .hud-tr { top: 8px; right: 8px; border-top: 1px solid var(--border-bright); border-right: 1px solid var(--border-bright); }
+    .hud-bl { bottom: 8px; left: 8px; border-bottom: 1px solid var(--border-bright); border-left: 1px solid var(--border-bright); }
+    .hud-br { bottom: 8px; right: 8px; border-bottom: 1px solid var(--border-bright); border-right: 1px solid var(--border-bright); }
+
+    /* ── HEADER ── */
+    .dash-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+    }
+
+    .dash-header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dash-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dash-logo-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: rgba(0,200,255,0.1);
+      border: 1px solid var(--border-bright);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+      font-size: 14px;
+    }
+
+    .dash-logo h1 {
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      text-shadow: 0 0 15px var(--cyan-glow);
+    }
+
+    .dash-header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .dash-time {
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .pulse-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .dash-back {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-decoration: none;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.25s;
+    }
+
+    .dash-back:hover {
+      color: var(--cyan);
+      border-color: var(--border-bright);
+      text-decoration: none;
+    }
+
+    /* ── CONTENT ── */
+    .dash-content {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── HEATMAP TABLE ── */
+    .heatmap-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .heatmap-panel h2 {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .heatmap-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 3px;
+    }
+
+    .heatmap-table th {
+      font-family: var(--font);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .heatmap-table th.project-name-col {
+      text-align: left;
+      font-size: 11px;
+      min-width: 160px;
+      padding-right: 16px;
+    }
+
+    .heatmap-table td.project-name {
+      text-align: left;
+      padding: 8px 16px 8px 0;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .project-name-link {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .project-name-link:hover {
+      color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    .project-name-sub {
+      font-family: var(--font);
+      font-size: 10px;
+      color: var(--text-dim);
+      display: block;
+      margin-top: 2px;
+      letter-spacing: 0.03em;
+    }
+
+    td.heat-cell {
+      width: 32px;
+      height: 32px;
+      text-align: center;
+      vertical-align: middle;
+      border-radius: 6px;
+      position: relative;
+      cursor: default;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    td.heat-cell:hover {
+      transform: scale(1.3);
+      z-index: 10;
+    }
+
+    .heat-0 { background: rgba(0,200,255,0.03); }
+    .heat-1 { background: rgba(0,200,255,0.12); box-shadow: inset 0 0 8px rgba(0,200,255,0.1); }
+    .heat-2 { background: rgba(0,200,255,0.22); box-shadow: inset 0 0 10px rgba(0,200,255,0.15); }
+    .heat-3 { background: rgba(0,200,255,0.35); box-shadow: inset 0 0 12px rgba(0,200,255,0.2); }
+    .heat-4 { background: rgba(0,200,255,0.50); box-shadow: 0 0 10px rgba(0,200,255,0.2), inset 0 0 14px rgba(0,200,255,0.25); }
+    .heat-5 { background: rgba(0,200,255,0.70); box-shadow: 0 0 14px rgba(0,200,255,0.3), inset 0 0 16px rgba(0,200,255,0.3); }
+
+    td.heat-cell:hover.heat-1,
+    td.heat-cell:hover.heat-2,
+    td.heat-cell:hover.heat-3,
+    td.heat-cell:hover.heat-4,
+    td.heat-cell:hover.heat-5 {
+      box-shadow: 0 0 20px var(--cyan-glow);
+    }
+
+    .heat-count {
+      font-family: var(--font);
+      font-size: 10px;
+      font-weight: 700;
+      color: transparent;
+      transition: color 0.15s;
+    }
+
+    td.heat-cell:hover .heat-count {
+      color: var(--text);
+    }
+
+    /* ── TOTAL COLUMN ── */
+    td.total-cell {
+      text-align: center;
+      padding: 8px 12px;
+    }
+
+    .total-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .total-bar-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(0,200,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 60px;
+    }
+
+    .total-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--cyan), rgba(0,200,255,0.5));
+      box-shadow: 0 0 8px var(--cyan-glow);
+      width: 0%;
+      transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .total-num {
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      min-width: 24px;
+      text-align: right;
+    }
+
+    /* ── LEGEND ── */
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+
+    .legend-label {
+      font-family: var(--font);
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-right: 4px;
+    }
+
+    .legend-box {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    /* ── RECENT LOG PANEL ── */
+    .log-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+    }
+
+    .log-panel h2 {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .log-table tr {
+      border-top: 1px solid rgba(0,200,255,0.05);
+      transition: background 0.15s;
+    }
+
+    .log-table tr:first-child { border-top: none; }
+
+    .log-table tr:hover { background: rgba(0,200,255,0.03); }
+
+    .log-table td {
+      padding: 10px 0;
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    .log-date {
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      width: 90px;
+    }
+
+    .log-repo {
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cyan);
+      white-space: nowrap;
+      width: 180px;
+      padding: 0 16px;
+    }
+
+    .log-msg {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .log-hash {
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--orange);
+      opacity: 0.6;
+      margin-right: 8px;
+    }
+
+    /* ── ANIMATIONS ── */
+    .panel-reveal {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .panel-reveal.entered {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ── TOOLTIP ── */
+    .tooltip {
+      position: fixed;
+      background: var(--surface-2);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--text);
+      pointer-events: none;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity 0.15s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      white-space: nowrap;
+    }
+
+    .tooltip.show { opacity: 1; }
+
+    .tooltip .tt-count { color: var(--cyan); font-weight: 700; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .heatmap-panel { padding: 16px; }
+      .log-repo { display: none; }
+      .dash-time { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-arc">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,200,255,0.08)" stroke-width="1" />
+        <circle cx="50" cy="50" r="36" fill="none" stroke="rgba(0,200,255,0.05)" stroke-width="0.5" />
+        <path d="M50 8 A42 42 0 0 1 92 50" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" opacity="0.6" />
+        <path d="M50 92 A42 42 0 0 1 8 50" fill="none" stroke="var(--cyan)" stroke-width="1" stroke-linecap="round" opacity="0.3" />
+      </svg>
+      <div class="arc-center"><i class="fas fa-fingerprint"></i></div>
+    </div>
+    <h1>Project Dashboard</h1>
+    <p>Passcode required to proceed</p>
+    <form id="lock-form">
+      <input type="password" id="passcode" class="lock-input" maxlength="20" autofocus autocomplete="off" placeholder="_ _ _ _" />
+      <button type="submit" class="lock-btn">Authenticate</button>
+    </form>
+  </div>
+</div>
+
+<div id="boot-overlay">
+  <div class="boot-text" data-delay="0">Initializing dashboard...</div>
+  <div class="boot-text" data-delay="300">Scanning 5 repositories...</div>
+  <div class="boot-text" data-delay="700">Building activity heatmap...</div>
+  <div class="boot-text" data-delay="1100">Systems online.</div>
+</div>
+
+<div id="dashboard">
+  <div id="scanline"></div>
+  <div class="hud-tl"></div><div class="hud-tr"></div><div class="hud-bl"></div><div class="hud-br"></div>
+  <div id="tooltip" class="tooltip"></div>
+
+  <div class="dash-header">
+    <div class="dash-header-inner">
+      <div class="dash-logo">
+        <div class="dash-logo-icon"><i class="fas fa-terminal"></i></div>
+        <h1>Dashboard</h1>
+      </div>
+      <div class="dash-header-right">
+        <div class="pulse-dot"></div>
+        <span class="dash-time" id="live-time"></span>
+        <a href="https://luanpao82.github.io/" class="dash-back">Exit</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-content">
+
+    <!-- HEATMAP -->
+    <div class="heatmap-panel panel-reveal" id="heatmap-panel">
+      <h2>Activity Heatmap &mdash; Last 30 Days</h2>
+      <table class="heatmap-table" id="heatmap"></table>
+      <div class="legend">
+        <span class="legend-label">Less</span>
+        <div class="legend-box heat-0"></div>
+        <div class="legend-box heat-1"></div>
+        <div class="legend-box heat-2"></div>
+        <div class="legend-box heat-3"></div>
+        <div class="legend-box heat-4"></div>
+        <div class="legend-box heat-5"></div>
+        <span class="legend-label">More</span>
+      </div>
+    </div>
+
+    <!-- RECENT LOG -->
+    <div class="log-panel panel-reveal" id="log-panel">
+      <h2>Recent Commits</h2>
+      <table class="log-table" id="log-table"></table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── SHARED ──
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatDate(d) {
+    return MONTHS[+d.slice(5,7)-1] + ' ' + +d.slice(8,10);
+  }
+
+  function pseudoHash(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0).toString(16).padStart(6, '0').slice(0, 6);
+  }
+
+  // ── DATA ──
+  const PROJECTS = [
+    {
+      name: 'Asian Nonprofit Research',
+      tag: 'Text Analysis · Asia',
+      url: 'https://luanpao82.github.io/asian-nonprofit-research/index.html',
+      commits: [
+        { date: '2026-04-25', msg: 'Update Turkey LDA model from k=2 to k=3' },
+        { date: '2026-04-25', msg: 'Update Vietnam LDA with R Gibbs sampling results (k=2-8)' },
+        { date: '2026-04-25', msg: 'Update China topic model: selected k=2 to k=5' },
+        { date: '2026-04-09', msg: 'Replace country/countries with location/locations' },
+        { date: '2026-04-09', msg: 'Update site data (2026-04-08)' },
+        { date: '2026-04-09', msg: 'Update site data' },
+        { date: '2026-04-07', msg: 'Remove k=2-5 range label from topic explorer' },
+        { date: '2026-04-07', msg: 'Make multi-k explorer link more visible' },
+        { date: '2026-04-07', msg: 'Fix topics.js dead variable; update pipeline' },
+        { date: '2026-04-07', msg: 'Add multi-k topic explorer page' },
+        { date: '2026-04-07', msg: 'Update site data' },
+        { date: '2026-04-01', msg: 'Update site data' },
+        { date: '2026-04-01', msg: 'Add contact callout for Dr. Seongho An' },
+        { date: '2026-03-31', msg: 'Update site data' },
+        { date: '2026-03-31', msg: 'Add focusing, excluded domain-generic terms' },
+        { date: '2026-03-31', msg: 'Update About page: text normalization step' },
+        { date: '2026-03-31', msg: 'Update site data via Python pipeline' },
+        { date: '2026-03-31', msg: 'Update site data' },
+        { date: '2026-03-31', msg: 'Update site data' },
+        { date: '2026-03-31', msg: 'Update site data' },
+        { date: '2026-03-27', msg: 'Fix data inconsistencies across site' },
+        { date: '2026-03-27', msg: 'Add English vs Local Language page' },
+        { date: '2026-03-27', msg: 'Limit similarity analysis to N>=1000' },
+        { date: '2026-03-27', msg: 'Fix Korea: use English title column' },
+        { date: '2026-03-27', msg: 'Fix Korea data: 5,105 docs, rerun LDA' },
+        { date: '2026-03-27', msg: 'Add Cross-Country Comparison page' },
+        { date: '2026-03-27', msg: 'Show 15 terms per LDA topic instead of 10' },
+        { date: '2026-03-27', msg: 'Add LDA topic modeling' },
+        { date: '2026-03-27', msg: 'Show labels on all network nodes' },
+      ]
+    },
+    {
+      name: 'Anti-criminalization by CoC',
+      tag: 'Multilevel DiD · Homelessness',
+      url: 'https://luanpao82.github.io/coc-criminalization/',
+      commits: [
+        { date: '2026-04-18', msg: 'Add Stage 2 per-narrative review dashboard' },
+        { date: '2026-04-18', msg: 'Surface Stage 1 extraction failures' },
+        { date: '2026-04-18', msg: 'Add PLE engagement as primary IV' },
+        { date: '2026-04-18', msg: 'Strip dead code — superseded DiD/regression variants' },
+        { date: '2026-04-18', msg: 'Move site/ to docs/ for GitHub Pages' },
+        { date: '2026-04-18', msg: 'Initial commit' },
+      ]
+    },
+    {
+      name: 'ARNOVA History Database',
+      tag: 'Longitudinal Data · ARNOVA',
+      url: 'https://luanpao82.github.io/arnova-history/',
+      commits: [
+        { date: '2026-04-09', msg: 'Fix bugs and improve performance' },
+        { date: '2026-04-09', msg: 'Update count from 5,406 to 5,591' },
+        { date: '2026-04-09', msg: 'Fix 2025 data: 556 entries (vs 371)' },
+        { date: '2026-04-09', msg: 'Fix year stats table: dynamic data' },
+        { date: '2026-04-09', msg: 'Fix 2021 and 2022 conference locations' },
+        { date: '2026-03-27', msg: 'Initial commit' },
+      ]
+    },
+    {
+      name: 'Policy Signals & Revenue',
+      tag: 'Signaling Theory · Nonprofit',
+      url: 'https://luanpao82.github.io/immigration-policy-nonprofit/',
+      commits: [
+        { date: '2026-04-14', msg: 'Add GitHub Pages deploy workflow' },
+        { date: '2026-04-14', msg: 'Initial deploy' },
+      ]
+    },
+    {
+      name: 'State Immigration Policy',
+      tag: 'Policy Analysis · Immigration',
+      url: 'https://luanpao82.github.io/state-immigration-policy/',
+      commits: [
+        { date: '2026-03-31', msg: 'Add GitHub Actions workflow' },
+        { date: '2026-03-31', msg: 'Initial commit' },
+      ]
+    },
+  ];
+
+  // ── BUILD HEATMAP ──
+  function buildHeatmap() {
+    const table = document.getElementById('heatmap');
+    const today = new Date('2026-04-26');
+    const days = 30;
+    const dates = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    // Header row
+    let thead = '<thead><tr><th class="project-name-col"></th>';
+    dates.forEach((d, i) => {
+      const day = +d.slice(8, 10);
+      const show = (day === 1 || i === 0 || i % 7 === 0);
+      const label = show ? (MONTHS[+d.slice(5,7)-1] + ' ' + day) : '';
+      thead += `<th>${label}</th>`;
+    });
+    thead += '<th style="padding-left:16px;text-align:left;">Total</th></tr></thead>';
+
+    // Body
+    let tbody = '<tbody>';
+    const maxTotal = Math.max(...PROJECTS.map(p => p.commits.length));
+
+    PROJECTS.forEach(proj => {
+      const countByDate = {};
+      proj.commits.forEach(c => {
+        countByDate[c.date] = (countByDate[c.date] || 0) + 1;
+      });
+
+      tbody += '<tr>';
+      tbody += `<td class="project-name">
+        <a href="${proj.url}" target="_blank" class="project-name-link">${proj.name}</a>
+        <span class="project-name-sub">${proj.tag}</span>
+      </td>`;
+
+      dates.forEach(d => {
+        const n = countByDate[d] || 0;
+        const level = n === 0 ? 0 : n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 3 : n <= 6 ? 4 : 5;
+        tbody += `<td class="heat-cell heat-${level}" data-date="${d}" data-count="${n}" data-project="${proj.name}"><span class="heat-count">${n || ''}</span></td>`;
+      });
+
+      const pct = Math.round((proj.commits.length / maxTotal) * 100);
+      tbody += `<td class="total-cell">
+        <div class="total-bar-wrap">
+          <div class="total-bar-track"><div class="total-bar-fill" data-width="${pct}"></div></div>
+          <span class="total-num">${proj.commits.length}</span>
+        </div>
+      </td>`;
+      tbody += '</tr>';
+    });
+    tbody += '</tbody>';
+
+    table.innerHTML = thead + tbody;
+  }
+
+  // ── BUILD LOG ──
+  function buildLog() {
+    const table = document.getElementById('log-table');
+    const allCommits = [];
+
+    PROJECTS.forEach(proj => {
+      proj.commits.forEach((c, i) => {
+        allCommits.push({
+          date: c.date,
+          msg: c.msg,
+          repo: proj.name,
+          hash: pseudoHash(proj.name + c.date + c.msg),
+          order: i
+        });
+      });
+    });
+
+    allCommits.sort((a, b) => b.date.localeCompare(a.date) || a.order - b.order);
+
+    let html = '';
+    for (const c of allCommits.slice(0, 15)) {
+      html += `<tr>
+        <td class="log-date">${formatDate(c.date)}</td>
+        <td class="log-repo">${c.repo}</td>
+        <td class="log-msg"><span class="log-hash">${c.hash}</span>${c.msg}</td>
+      </tr>`;
+    }
+    table.innerHTML = html;
+  }
+
+  // ── TOOLTIP (event delegation) ──
+  function initTooltip() {
+    const tooltip = document.getElementById('tooltip');
+    const table = document.getElementById('heatmap');
+
+    table.addEventListener('mouseover', e => {
+      const cell = e.target.closest('.heat-cell');
+      if (!cell) return;
+      const count = +cell.dataset.count;
+      const date = cell.dataset.date;
+      tooltip.innerHTML = count === 0
+        ? `${formatDate(date)} &mdash; No activity`
+        : `<span class="tt-count">${count} commit${count > 1 ? 's' : ''}</span> on ${formatDate(date)}`;
+      tooltip.classList.add('show');
+    });
+
+    table.addEventListener('mousemove', e => {
+      if (!e.target.closest('.heat-cell')) return;
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY - 36) + 'px';
+    });
+
+    table.addEventListener('mouseout', e => {
+      const cell = e.target.closest('.heat-cell');
+      if (!cell || cell.contains(e.relatedTarget)) return;
+      tooltip.classList.remove('show');
+    });
+  }
+
+  // ── ANIMATE BARS ──
+  function animateBars() {
+    document.querySelectorAll('.total-bar-fill').forEach((bar, i) => {
+      setTimeout(() => {
+        bar.style.width = bar.dataset.width + '%';
+      }, 300 + i * 150);
+    });
+  }
+
+  // ── PANEL ANIMATION ──
+  function animatePanels() {
+    document.querySelectorAll('.panel-reveal').forEach((el, i) => {
+      setTimeout(() => el.classList.add('entered'), i * 200);
+    });
+  }
+
+  // ── AUTH ──
+  async function hashCode(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  const HASH = '3ba447072b1bcb90321f2ed1d549832955a19dacb57c4c068f9f6367c6387ff0';
+
+  function initDashboard() {
+    buildHeatmap();
+    buildLog();
+    initTooltip();
+    animatePanels();
+    setTimeout(animateBars, 600);
+  }
+
+  function bootSequence() {
+    const overlay = document.getElementById('boot-overlay');
+    const dashboard = document.getElementById('dashboard');
+    document.getElementById('lock-screen').style.display = 'none';
+    overlay.style.display = 'flex';
+
+    overlay.querySelectorAll('.boot-text').forEach(line => {
+      setTimeout(() => line.classList.add('show'), +line.dataset.delay);
+    });
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      dashboard.style.display = 'block';
+      requestAnimationFrame(() => {
+        dashboard.classList.add('visible');
+        document.getElementById('scanline').classList.add('scanline-run');
+        initDashboard();
+      });
+    }, 1800);
+  }
+
+  document.getElementById('lock-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('passcode');
+    const h = await hashCode(input.value);
+    if (h === HASH) {
+      sessionStorage.setItem('dash_auth', '1');
+      bootSequence();
+    } else {
+      input.classList.add('shake');
+      input.value = '';
+      setTimeout(() => input.classList.remove('shake'), 500);
+    }
+  });
+
+  if (sessionStorage.getItem('dash_auth') === '1') {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    requestAnimationFrame(() => {
+      document.getElementById('dashboard').classList.add('visible');
+      initDashboard();
+    });
+  }
+
+  // ── LIVE CLOCK ──
+  function updateClock() {
+    const el = document.getElementById('live-time');
+    if (!el) return;
+    const now = new Date();
+    el.textContent = now.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
