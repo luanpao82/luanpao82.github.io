@@ -2,7 +2,7 @@ name: Update Dashboard Data
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # Every day at 6:00 UTC (1:00 AM EST)
+    - cron: '0 4 * * *'   # 00:00 EDT (04:00 UTC) — shifts ±1h with DST; adjust if needed
   workflow_dispatch:        # Manual trigger
 
 permissions:
