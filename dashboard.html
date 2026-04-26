@@ -1477,6 +1477,7 @@
   // ── BRIEFING ENGINE ──
   // ── TTS: male voice only ──
   let jarvisVoice = null;
+  let briefingSession = 0; // increments on every buildBriefing() so prior chains can abort
 
   function loadVoice() {
     const voices = speechSynthesis.getVoices();
@@ -1764,7 +1765,11 @@
       }
     }, visualDuration);
 
-    if (muted || !window.speechSynthesis || !jarvisVoice) return;
+    if (muted || !window.speechSynthesis || !jarvisVoice) {
+      // No real audio path — still advance the chain so visuals don't deadlock.
+      if (opts.onEnd) setTimeout(opts.onEnd, Math.max(1500, text.length * 55));
+      return;
+    }
 
     const utter = new SpeechSynthesisUtterance(text);
     utter.voice = jarvisVoice;
@@ -1895,38 +1900,60 @@
       return { div, line, words: Array.from(div.querySelectorAll('.bw')) };
     });
 
-    // Sequentially process each line: reveal → speak (real-time word reveal) → fade to past
+    // Cancel any prior chain (e.g. user hit Replay mid-briefing) so audio + visuals stay in sync.
+    briefingSession++;
+    const session = briefingSession;
+    if (window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (_) {} }
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // Each line: speak → wait for onEnd (with fallback) → next line. Guarantees
+    // audio order matches visual line order with no overlap.
     const processLine = (idx) => {
+      if (session !== briefingSession) return;          // aborted by newer Replay
       if (idx >= lineEls.length) return;
       const { div, line, words } = lineEls[idx];
 
-      // Demote previous lines
       for (let i = 0; i < idx; i++) {
         lineEls[i].div.classList.remove('active');
         lineEls[i].div.classList.add('past');
       }
       div.classList.add('visible', 'active');
+      if (line.refs) highlightRefs(line.refs);
 
       const readTime = Math.max(1800, line.speak.length * 55);
       const perWord = readTime / Math.max(1, words.length);
       let lastBoundaryWord = -1;
 
-      // Fallback timed reveal — runs in case onboundary doesn't fire (or fires sparsely)
-      const fallbackTimers = words.map((w, i) =>
+      // Time-based word reveal (refined by onboundary if it fires).
+      const wordTimers = words.map((w, i) =>
         setTimeout(() => {
+          if (session !== briefingSession) return;
           if (!w.classList.contains('spoken')) {
-            // mark previous active off, this active on
             words.forEach(ww => ww.classList.remove('active'));
             w.classList.add('spoken', 'active');
-            // de-active after a moment so it settles to plain "spoken"
             setTimeout(() => w.classList.remove('active'), 280);
           }
         }, 80 + i * perWord)
       );
 
-      // Speak with per-word callback (more accurate sync when supported)
+      let advanced = false;
+      const advance = () => {
+        if (advanced || session !== briefingSession) return;
+        advanced = true;
+        wordTimers.forEach(clearTimeout);
+        words.forEach(w => { w.classList.add('spoken'); w.classList.remove('active'); });
+        clearTimeout(safetyTimer);
+        setTimeout(() => processLine(idx + 1), 220);
+      };
+
+      // Hard cap: if onEnd never fires (no voice / muted / browser hiccup),
+      // still move on so the chain can't deadlock.
+      const safetyTimer = setTimeout(advance, readTime + 2000);
+
       speak(line.speak, {
         onWord: (wordIdx) => {
+          if (session !== briefingSession) return;
           if (wordIdx <= lastBoundaryWord) return;
           lastBoundaryWord = wordIdx;
           if (words[wordIdx]) {
@@ -1936,20 +1963,11 @@
               if (words[wordIdx]) words[wordIdx].classList.remove('active');
             }, 240);
           }
-        }
+        },
+        onEnd: advance,
       });
-
-      if (line.refs) highlightRefs(line.refs);
-
-      // Move to next line after readTime
-      setTimeout(() => {
-        words.forEach(ww => { ww.classList.add('spoken'); ww.classList.remove('active'); });
-        fallbackTimers.forEach(clearTimeout);
-        processLine(idx + 1);
-      }, readTime + 250);
     };
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     setTimeout(() => processLine(0), isMobile ? 80 : 600);
   }
 
@@ -2019,19 +2037,9 @@
     if (audioCtx && audioCtx.state === 'suspended') {
       try { audioCtx.resume(); } catch (_) {}
     }
+    // Drain any leftover queue so the first briefing speak() lands cleanly.
     if (window.speechSynthesis) {
-      try {
-        // iOS unlocks speechSynthesis only after an actually-played utterance
-        // in the gesture. Use audible volume + very fast rate so it's almost
-        // imperceptible but counts as real playback.
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance('Hi.');
-        u.lang = 'en-US';
-        u.volume = 0.4;
-        u.rate = 10;
-        u.pitch = 1;
-        speechSynthesis.speak(u);
-      } catch (_) {}
+      try { speechSynthesis.cancel(); } catch (_) {}
     }
   }
 
