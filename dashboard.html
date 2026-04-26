@@ -1176,6 +1176,9 @@
       <div class="hud-corner-text hud-corner-br">SIG <span class="hcv" id="hud-sig">98%</span></div>
 
       <div class="briefing-controls">
+        <button class="brf-btn" id="replay-btn" type="button" aria-label="Replay briefing" title="Replay">
+          <i class="fas fa-rotate-right"></i>
+        </button>
         <button class="brf-btn" id="mute-btn" type="button" aria-pressed="false" aria-label="Mute audio narration" title="Mute / Unmute">
           <i class="fas fa-volume-high"></i>
         </button>
@@ -1961,6 +1964,13 @@
     }
   });
 
+  document.getElementById('replay-btn').addEventListener('click', () => {
+    primeAudio(); // user gesture — re-arms the speech engine on iOS
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    setOrbState('idle');
+    setTimeout(buildBriefing, 250);
+  });
+
   document.getElementById('cc-btn').addEventListener('click', () => {
     captionsOn = !captionsOn;
     const btn = document.getElementById('cc-btn');
@@ -2001,9 +2011,13 @@
     }
     if (window.speechSynthesis) {
       try {
-        // Silent utterance to unlock the speech engine within a user gesture.
-        const u = new SpeechSynthesisUtterance('.');
-        u.volume = 0; u.rate = 10;
+        // iOS unlocks speechSynthesis after first successful speak() in a
+        // gesture. volume:0 is sometimes rejected — use 0.01 with real text.
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('hi');
+        u.lang = 'en-US';
+        u.volume = 0.01;
+        u.rate = 1;
         speechSynthesis.speak(u);
       } catch (_) {}
     }
