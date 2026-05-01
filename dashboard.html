@@ -1208,11 +1208,11 @@
     <div class="jarvis-status panel-reveal" id="jarvis-stats"></div>
 
     <div class="section-panel panel-reveal">
-      <h2>Current Projects <span class="h2-count">5 repos</span></h2>
+      <h2>Current Projects <span class="h2-count" id="primary-count"></span></h2>
       <div class="proj-grid" id="primary-grid"></div>
     </div>
     <div class="section-panel panel-reveal">
-      <h2>Other Projects <span class="h2-count">7 repos</span></h2>
+      <h2>Other Projects <span class="h2-count" id="other-count"></span></h2>
       <div class="proj-grid" id="other-grid"></div>
     </div>
   </div>
@@ -1220,13 +1220,19 @@
 
 <script>
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   function formatDate(d) {
     return MONTHS[+d.slice(5,7)-1] + ' ' + +d.slice(8,10);
   }
 
+  const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  function esc(s) { return String(s).replace(/[&<>"']/g, m => ESC_MAP[m]); }
+  function displayTag(t) { return String(t).replace(/^\d+-/, ''); }
+
   // ── DATA ──
   const PROJECTS = [
+    // >>> AUTO_UPDATE_START — auto-updated by .github/workflows/update-dashboard.yml; do not edit between markers
     {
       name: 'Asian Nonprofit Research',
       tag: 'Text Analysis · Asia',
@@ -1298,6 +1304,7 @@
         { date: '2026-03-31', msg: 'Initial commit' },
       ]
     },
+    // <<< AUTO_UPDATE_END
     {
       name: 'PAD 6149 Capstone',
       tag: '30-Teaching · Nonprofit Admin',
@@ -1372,9 +1379,41 @@
     },
   ];
 
+  // ── DERIVED TOTALS (single pass) ──
+  const TOTALS = (() => {
+    const today = new Date();
+    const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    let totalCommits = 0, primary = 0, other = 0, maxCommitsLen = 0;
+    let recentCommits = 0, activeProjects = 0;
+    const allDates = new Set();
+    const recentDates = new Set();
+    for (const p of PROJECTS) {
+      totalCommits += p.commits.length;
+      if (p.commits.length > maxCommitsLen) maxCommitsLen = p.commits.length;
+      if (p.primary) primary++; else other++;
+      let projHasRecent = false;
+      for (const c of p.commits) {
+        allDates.add(c.date);
+        if (c.date >= cutoffStr) {
+          recentCommits++;
+          recentDates.add(c.date);
+          projHasRecent = true;
+        }
+      }
+      if (projHasRecent) activeProjects++;
+    }
+    return {
+      total: PROJECTS.length, primary, other,
+      totalCommits, maxCommitsLen,
+      activeDaysAll: allDates.size,
+      recentCommits, recentDays: recentDates.size, activeProjects
+    };
+  })();
+
   // ── BUILD CARDS ──
   function buildCards(container, projects) {
-    const maxCommits = Math.max(...PROJECTS.map(p => p.commits.length));
+    const maxCommits = TOTALS.maxCommitsLen;
     let html = '';
     for (const proj of projects) {
       const n = proj.commits.length;
@@ -1382,13 +1421,16 @@
       const glowLevel = (0.15 + ratio * 0.45).toFixed(2);
       const circumference = 2 * Math.PI * 16;
       const dashoffset = (circumference * (1 - ratio)).toFixed(1);
-      const link = proj.url ? `<a href="${proj.url}" target="_blank">${proj.name}</a>` : proj.name;
+      const safeName = esc(proj.name);
+      const link = proj.url
+        ? `<a href="${esc(proj.url)}" target="_blank" rel="noopener">${safeName}</a>`
+        : safeName;
 
       let commitsHtml = '';
       for (const c of proj.commits.slice(0, 3)) {
         commitsHtml += `<div class="proj-card-commit">
-          <span class="pcc-date">${formatDate(c.date)}</span>
-          <span class="pcc-msg">${c.msg}</span>
+          <span class="pcc-date">${esc(formatDate(c.date))}</span>
+          <span class="pcc-msg">${esc(c.msg)}</span>
         </div>`;
       }
 
@@ -1396,7 +1438,7 @@
         <div class="proj-card-head">
           <div>
             <div class="proj-card-name">${link}</div>
-            <div class="proj-card-tag">${proj.tag}</div>
+            <div class="proj-card-tag">${esc(displayTag(proj.tag))}</div>
           </div>
           <div class="commit-ring">
             <svg viewBox="0 0 36 36">
@@ -1420,8 +1462,12 @@
   }
 
   function buildPanels() {
-    buildCards(document.getElementById('primary-grid'), PROJECTS.filter(p => p.primary));
-    buildCards(document.getElementById('other-grid'), PROJECTS.filter(p => !p.primary));
+    const primary = [], other = [];
+    for (const p of PROJECTS) (p.primary ? primary : other).push(p);
+    buildCards(document.getElementById('primary-grid'), primary);
+    buildCards(document.getElementById('other-grid'), other);
+    document.getElementById('primary-count').textContent = `${primary.length} repos`;
+    document.getElementById('other-count').textContent = `${other.length} repos`;
   }
 
   function animatePanels() {
@@ -1439,26 +1485,21 @@
   const HASH = '3ba447072b1bcb90321f2ed1d549832955a19dacb57c4c068f9f6367c6387ff0';
 
   function buildStats() {
-    const totalCommits = PROJECTS.reduce((s, p) => s + p.commits.length, 0);
-    const totalProjects = PROJECTS.length;
-    const latestDate = PROJECTS.flatMap(p => p.commits.map(c => c.date)).sort().pop();
-    const activeDays = new Set(PROJECTS.flatMap(p => p.commits.map(c => c.date))).size;
-
     document.getElementById('jarvis-stats').innerHTML = `
       <div class="stat-card">
         <div class="stat-label">Total Projects</div>
-        <div class="stat-value">${totalProjects}</div>
-        <div class="stat-sub">5 primary + 7 other</div>
+        <div class="stat-value">${TOTALS.total}</div>
+        <div class="stat-sub">${TOTALS.primary} primary + ${TOTALS.other} other</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Total Commits</div>
-        <div class="stat-value">${totalCommits}</div>
-        <div class="stat-sub">Last 30 days</div>
+        <div class="stat-label">Commits (30d)</div>
+        <div class="stat-value">${TOTALS.recentCommits}</div>
+        <div class="stat-sub">${TOTALS.activeProjects} active projects</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Active Days</div>
-        <div class="stat-value">${activeDays}</div>
-        <div class="stat-sub">of 30 days</div>
+        <div class="stat-label">Active Days (30d)</div>
+        <div class="stat-value">${TOTALS.recentDays}</div>
+        <div class="stat-sub">of last 30 days</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">System Status</div>
@@ -1467,11 +1508,10 @@
       </div>
     `;
 
-    // Greeting
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     document.getElementById('jarvis-greeting').innerHTML =
-      `${greeting}, sir. All systems operational. Managing <span class="highlight">${totalProjects} projects</span> with <span class="highlight">${totalCommits} commits</span> across <span class="highlight">${activeDays} active days</span>.`;
+      `${greeting}, sir. All systems operational. Managing <span class="highlight">${TOTALS.total} projects</span> with <span class="highlight">${TOTALS.recentCommits} commits</span> over the last <span class="highlight">30 days</span>.`;
   }
 
   // ── BRIEFING ENGINE ──
@@ -1482,17 +1522,16 @@
   function loadVoice() {
     const voices = speechSynthesis.getVoices();
     if (!voices.length) return;
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     // 1) Honor user pick from voice-picker.html (localStorage.jarvis_voice)
     const picked = localStorage.getItem('jarvis_voice');
     if (picked) {
       const m = voices.find(v => v.name === picked);
-      if (m && (!isMobile || m.localService)) { jarvisVoice = m; return; }
+      if (m && (!IS_MOBILE || m.localService)) { jarvisVoice = m; return; }
     }
     // 2) Default: male English; mobile prefers local voices to avoid silent remote-fetch failures
     const femaleNames = ['Samantha','Karen','Moira','Fiona','Victoria','Tessa','Allison','Ava','Susan','Kate','Serena','Kyoko','Yuna','Mei'];
     const enMale = voices.filter(v => v.lang.startsWith('en') && !femaleNames.some(f => v.name.includes(f)));
-    const pool = isMobile ? enMale.filter(v => v.localService) : enMale;
+    const pool = IS_MOBILE ? enMale.filter(v => v.localService) : enMale;
     jarvisVoice = pool.find(v => v.name.includes('Daniel'))
       || pool.find(v => v.lang.startsWith('en-GB'))
       || pool[0]
@@ -1595,6 +1634,7 @@
   function setOrbState(state) {
     const orb = document.getElementById('jarvis-orb');
     if (!orb) return;
+    const wasSpeaking = orb.classList.contains('speaking');
     orb.classList.remove('idle', 'listening', 'speaking');
     orb.classList.add(state);
     if (gainNode && audioCtx) {
@@ -1604,7 +1644,12 @@
         gainNode.gain.linearRampToValueAtTime(t, audioCtx.currentTime + 0.18);
       } catch (e) {}
     }
-    if (state === 'speaking') startSyllablePulse(); else stopSyllablePulse();
+    if (state === 'speaking') {
+      startSyllablePulse();
+      if (!wasSpeaking) requestAnimationFrame(renderOrb);
+    } else {
+      stopSyllablePulse();
+    }
   }
 
   // Syllable-rate gain driver — synthesizes natural speech rhythm so the orb
@@ -1654,76 +1699,81 @@
     if (syllableTimer) { clearTimeout(syllableTimer); syllableTimer = null; }
   }
 
-  // 60fps render loop driving orb scale + frequency bars
+  // Render loop — only runs while orb is speaking. setOrbState('speaking') wakes it.
+  // Idle uses CSS keyframes (orb-breathe) and static bar styles, so no rAF cost.
+  let orbIdleResetDone = true;
   function renderOrb() {
+    const orb = document.getElementById('jarvis-orb');
+    const isSpeaking = orb && orb.classList.contains('speaking');
+
+    if (!isSpeaking) {
+      // Reset inline styles once on transition, then sleep until next setOrbState('speaking').
+      if (!orbIdleResetDone) {
+        const core = document.querySelector('.orb-core');
+        if (core) {
+          core.style.transform = '';
+          core.style.boxShadow = '';
+          core.style.filter = '';
+        }
+        document.querySelectorAll('.ob-bar').forEach(b => {
+          b.style.height = '';
+          b.style.opacity = '';
+        });
+        orbIdleResetDone = true;
+      }
+      return;
+    }
+    orbIdleResetDone = false;
+
     const core = document.querySelector('.orb-core');
     const bars = document.querySelectorAll('.ob-bar');
     if (!core || bars.length === 0) { requestAnimationFrame(renderOrb); return; }
 
-    const orb = document.getElementById('jarvis-orb');
-    const isSpeaking = orb && orb.classList.contains('speaking');
-    let amplitude = 0;
     const N = bars.length;
-    const bandValues = new Array(N).fill(0);
+    const bandValues = new Array(N);
+    let amplitude;
 
-    if (isSpeaking) {
-      if (analyser && freqData) {
-        analyser.getByteFrequencyData(freqData);
-        let sum = 0;
-        for (let i = 0; i < freqData.length; i++) sum += freqData[i];
-        amplitude = sum / (freqData.length * 255);
-        const step = freqData.length / N;
-        for (let i = 0; i < N; i++) {
-          const a = Math.floor(i * step), b = Math.floor((i + 1) * step);
-          let s = 0;
-          for (let j = a; j < b; j++) s += freqData[j];
-          bandValues[i] = (s / Math.max(1, b - a)) / 255;
-        }
-      } else {
-        // Web Audio unavailable — synthesize pseudo-frequency dance.
-        const t = performance.now() / 1000;
-        amplitude = 0.55 + 0.25 * Math.abs(Math.sin(t * 5));
-        for (let i = 0; i < N; i++) {
-          bandValues[i] = 0.35 + 0.45 * Math.abs(Math.sin(t * (4.5 + i * 0.4) + i));
-        }
-      }
-    } else {
-      // Idle dim bars (core uses CSS breathing keyframes)
-      const t = performance.now() / 1000;
+    if (analyser && freqData) {
+      analyser.getByteFrequencyData(freqData);
+      let sum = 0;
+      for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+      amplitude = sum / (freqData.length * 255);
+      const step = freqData.length / N;
       for (let i = 0; i < N; i++) {
-        bandValues[i] = 0.05 + 0.03 * (0.5 + 0.5 * Math.sin(t * 0.8 + i * 0.7));
+        const a = Math.floor(i * step), b = Math.floor((i + 1) * step);
+        let s = 0;
+        for (let j = a; j < b; j++) s += freqData[j];
+        bandValues[i] = (s / Math.max(1, b - a)) / 255;
+      }
+    } else {
+      // Web Audio unavailable — synthesize pseudo-frequency dance.
+      const t = performance.now() / 1000;
+      amplitude = 0.55 + 0.25 * Math.abs(Math.sin(t * 5));
+      for (let i = 0; i < N; i++) {
+        bandValues[i] = 0.35 + 0.45 * Math.abs(Math.sin(t * (4.5 + i * 0.4) + i));
       }
     }
 
-    if (isSpeaking) {
-      // Punchier amplitude curve so syllables register visually.
-      const a = Math.min(1, Math.pow(amplitude * 1.9, 0.85));
-      // Anisotropic scale — vertical stretch like a vibrating membrane (mouth-like).
-      const sx = 1 + a * 0.14;
-      const sy = 1 + a * 0.28;
-      const wobbleT = performance.now() / 1000;
-      const dx = Math.sin(wobbleT * 7.3) * a * 1.6;
-      const dy = Math.cos(wobbleT * 5.7) * a * 1.6;
-      core.style.transform =
-        `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
-      core.style.boxShadow =
-        `0 0 ${30 + a * 70}px rgba(0,210,255,${(0.45 + a * 0.45).toFixed(2)}),` +
-        ` 0 0 ${50 + a * 80}px rgba(190,90,255,${(0.25 + a * 0.4).toFixed(2)}),` +
-        ` 0 0 ${70 + a * 100}px rgba(255,90,180,${(0.15 + a * 0.3).toFixed(2)}),` +
-        ` 0 0 ${4 + a * 14}px rgba(220,235,255,${(0.3 + a * 0.4).toFixed(2)}) inset`;
-      core.style.filter =
-        `brightness(${(1 + a * 0.22).toFixed(3)}) saturate(${(1.1 + a * 0.3).toFixed(3)}) hue-rotate(${(a * 12).toFixed(1)}deg)`;
-    } else {
-      // let CSS keyframes drive idle breathing
-      core.style.transform = '';
-      core.style.boxShadow = '';
-      core.style.filter = '';
-    }
+    // Punchier amplitude curve so syllables register visually.
+    const a = Math.min(1, Math.pow(amplitude * 1.9, 0.85));
+    const sx = 1 + a * 0.14;
+    const sy = 1 + a * 0.28;
+    const wobbleT = performance.now() / 1000;
+    const dx = Math.sin(wobbleT * 7.3) * a * 1.6;
+    const dy = Math.cos(wobbleT * 5.7) * a * 1.6;
+    core.style.transform =
+      `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
+    core.style.boxShadow =
+      `0 0 ${30 + a * 70}px rgba(0,210,255,${(0.45 + a * 0.45).toFixed(2)}),` +
+      ` 0 0 ${50 + a * 80}px rgba(190,90,255,${(0.25 + a * 0.4).toFixed(2)}),` +
+      ` 0 0 ${70 + a * 100}px rgba(255,90,180,${(0.15 + a * 0.3).toFixed(2)}),` +
+      ` 0 0 ${4 + a * 14}px rgba(220,235,255,${(0.3 + a * 0.4).toFixed(2)}) inset`;
+    core.style.filter =
+      `brightness(${(1 + a * 0.22).toFixed(3)}) saturate(${(1.1 + a * 0.3).toFixed(3)}) hue-rotate(${(a * 12).toFixed(1)}deg)`;
 
     const maxBarH = barMaxHeight();
+    const center = (N - 1) / 2;
     for (let i = 0; i < N; i++) {
-      // Boost mid bars (center of the row tends to be visually prominent).
-      const center = (N - 1) / 2;
       const boost = 1 + 0.4 * (1 - Math.abs(i - center) / center);
       const v = Math.min(1, bandValues[i] * 1.6 * boost);
       bars[i].style.height = (6 + v * maxBarH).toFixed(1) + 'px';
@@ -1839,51 +1889,34 @@
   }
 
   function buildBriefing() {
-    // Period
     const today = new Date();
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
     document.getElementById('briefing-period').textContent =
       formatDate(weekAgo.toISOString().slice(0,10)) + ' — ' + formatDate(today.toISOString().slice(0,10));
 
-    // Compute weekly stats
-    const cutoff = new Date(today);
-    cutoff.setDate(cutoff.getDate() - 7);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-
+    // Weekly window for the briefing summary
+    const weekCutoffStr = weekAgo.toISOString().slice(0, 10);
     let weekCommits = 0;
-    let activeProjects = 0;
-    const categories = { research: 0, teaching: 0, web: 0 };
-
+    let weekActiveProjects = 0;
     for (const proj of PROJECTS) {
-      const recent = proj.commits.filter(c => c.date >= cutoffStr);
-      if (recent.length > 0) {
-        weekCommits += recent.length;
-        activeProjects++;
-        if (proj.primary) categories.research += recent.length;
-        else if (proj.tag.includes('Teaching')) categories.teaching += recent.length;
-        else categories.web += recent.length;
-      }
+      const recent = proj.commits.reduce((n, c) => n + (c.date >= weekCutoffStr ? 1 : 0), 0);
+      if (recent > 0) { weekCommits += recent; weekActiveProjects++; }
     }
 
-    const activeDays = new Set(
-      PROJECTS.flatMap(p => p.commits.filter(c => c.date >= cutoffStr).map(c => c.date))
-    ).size;
-
-    // Build briefing lines
     const hour = today.getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
     const lines = [
       { text: `${greeting}, Sir.`, speak: `${greeting}, Sir.` },
       {
-        text: `This week: <span class="bl-num">${weekCommits}</span> commits, <span class="bl-num">${activeProjects}</span> active projects.`,
-        speak: `This week: ${weekCommits} commits across ${activeProjects} active projects.`,
+        text: `This week: <span class="bl-num">${weekCommits}</span> commits, <span class="bl-num">${weekActiveProjects}</span> active projects.`,
+        speak: `This week: ${weekCommits} commits across ${weekActiveProjects} active projects.`,
         refs: ['primary-grid', 'other-grid']
       },
       {
-        text: `Claude tokens: <span class="bl-num">~38%</span> of weekly limit used.`,
-        speak: `Claude tokens: approximately 38 percent of weekly limit used.`,
+        text: `Last 30 days: <span class="bl-num">${TOTALS.recentCommits}</span> commits across <span class="bl-num">${TOTALS.recentDays}</span> active days.`,
+        speak: `Last 30 days: ${TOTALS.recentCommits} commits across ${TOTALS.recentDays} active days.`,
         refs: ['jarvis-stats']
       },
       { text: `Standing by, Sir.`, speak: `Standing by, Sir.` },
@@ -1905,13 +1938,11 @@
     const session = briefingSession;
     if (window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (_) {} }
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
     // Each line: speak → wait for onEnd (with fallback) → next line. Guarantees
     // audio order matches visual line order with no overlap.
     const processLine = (idx) => {
       if (session !== briefingSession) return;          // aborted by newer Replay
-      if (idx >= lineEls.length) return;
+      if (idx >= lineEls.length) { setOrbState('idle'); return; }
       const { div, line, words } = lineEls[idx];
 
       for (let i = 0; i < idx; i++) {
@@ -1968,7 +1999,7 @@
       });
     };
 
-    setTimeout(() => processLine(0), isMobile ? 80 : 600);
+    setTimeout(() => processLine(0), IS_MOBILE ? 80 : 600);
   }
 
   // Mute + captions controls (accessibility)
@@ -2001,18 +2032,16 @@
     buildStats();
     buildPanels();
     animatePanels();
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    setTimeout(buildBriefing, isMobile ? 100 : 800);
+    setTimeout(buildBriefing, IS_MOBILE ? 100 : 800);
   }
 
   function bootSequence() {
     const overlay = document.getElementById('boot-overlay');
     const dashboard = document.getElementById('dashboard');
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     document.getElementById('lock-screen').style.display = 'none';
     // Skip boot overlay on mobile so the first speak() fires within iOS's
     // gesture window (long boot animation drops the gesture).
-    if (isMobile) {
+    if (IS_MOBILE) {
       dashboard.style.display = 'block';
       requestAnimationFrame(() => { dashboard.classList.add('visible'); initDashboard(); });
       return;
@@ -2065,8 +2094,7 @@
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     // Mobile session-restore: defer the briefing until first tap so audio works.
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && window.speechSynthesis) {
+    if (IS_MOBILE && window.speechSynthesis) {
       const tapHint = document.createElement('div');
       tapHint.textContent = 'Tap to start';
       tapHint.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 22px;background:rgba(0,200,255,0.12);border:1px solid rgba(0,200,255,0.45);border-radius:12px;color:#00e6ff;font-family:"SF Mono",monospace;letter-spacing:0.18em;text-transform:uppercase;font-size:12px;z-index:9999;backdrop-filter:blur(10px);';

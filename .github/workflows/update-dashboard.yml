@@ -14,148 +14,110 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch commit data and update dashboard
+      - name: Update primary projects in dashboard.html
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
+          python3 - <<'PYEOF'
+          import json
+          import re
+          import subprocess
+          import sys
 
-          REPOS="asian-nonprofit-research coc-criminalization arnova-history state-immigration-policy immigration-policy-nonprofit"
-          TODAY=$(date -u +%Y-%m-%d)
-
-          # Fetch commits (last 30) from each repo as JSON
-          ALL_DATA="["
-          first=true
-          for repo in $REPOS; do
-            DATA=$(gh api "repos/luanpao82/$repo/commits?per_page=30" \
-              --jq "[.[] | {date: .commit.author.date[0:10], msg: .commit.message | split(\"\n\")[0][0:80]}]" 2>/dev/null || echo "[]")
-
-            # Get repo metadata
-            case "$repo" in
-              asian-nonprofit-research)
-                NAME="Asian Nonprofit Research"
-                TAG="Text Analysis · Asia"
-                URL="https://luanpao82.github.io/asian-nonprofit-research/index.html" ;;
-              coc-criminalization)
-                NAME="Anti-criminalization by CoC"
-                TAG="Multilevel DiD · Homelessness"
-                URL="https://luanpao82.github.io/coc-criminalization/" ;;
-              arnova-history)
-                NAME="ARNOVA History Database"
-                TAG="Longitudinal Data · ARNOVA"
-                URL="https://luanpao82.github.io/arnova-history/" ;;
-              state-immigration-policy)
-                NAME="State Immigration Policy"
-                TAG="Policy Analysis · Immigration"
-                URL="https://luanpao82.github.io/state-immigration-policy/" ;;
-              immigration-policy-nonprofit)
-                NAME="Policy Signals & Revenue"
-                TAG="Signaling Theory · Nonprofit"
-                URL="https://luanpao82.github.io/immigration-policy-nonprofit/" ;;
-            esac
-
-            COMMITS_JS=$(echo "$DATA" | python3 -c "
-          import json, sys
-          commits = json.load(sys.stdin)
-          lines = []
-          for c in commits:
-              msg = c['msg'].replace(\"'\", \"\\\\'\").replace('\"', '\\\\\"')
-              lines.append(f\"        {{ date: '{c['date']}', msg: '{msg}' }}\")
-          print(',\n'.join(lines))
-          ")
-
-            if [ "$first" = true ]; then first=false; else ALL_DATA+=","; fi
-            ALL_DATA+="
-              {
-                \"name\": \"$NAME\",
-                \"tag\": \"$TAG\",
-                \"url\": \"$URL\",
-                \"commits\": \"$COMMITS_JS\"
-              }"
-          done
-          ALL_DATA+="]"
-
-          # Build the JS PROJECTS block
-          python3 << 'PYEOF'
-          import json, re
-
-          repos = [
-            {
-              "key": "asian-nonprofit-research",
-              "name": "Asian Nonprofit Research",
-              "tag": "Text Analysis · Asia",
-              "url": "https://luanpao82.github.io/asian-nonprofit-research/index.html"
-            },
-            {
-              "key": "coc-criminalization",
-              "name": "Anti-criminalization by CoC",
-              "tag": "Multilevel DiD · Homelessness",
-              "url": "https://luanpao82.github.io/coc-criminalization/"
-            },
-            {
-              "key": "arnova-history",
-              "name": "ARNOVA History Database",
-              "tag": "Longitudinal Data · ARNOVA",
-              "url": "https://luanpao82.github.io/arnova-history/"
-            },
-            {
-              "key": "immigration-policy-nonprofit",
-              "name": "Policy Signals & Revenue",
-              "tag": "Signaling Theory · Nonprofit",
-              "url": "https://luanpao82.github.io/immigration-policy-nonprofit/"
-            },
-            {
-              "key": "state-immigration-policy",
-              "name": "State Immigration Policy",
-              "tag": "Policy Analysis · Immigration",
-              "url": "https://luanpao82.github.io/state-immigration-policy/"
-            },
+          # Surgical update: replace ONLY the auto-update block in PROJECTS, leaving
+          # `primary: true` flags and the manually-curated "Other Projects" intact.
+          REPOS = [
+              {"key": "asian-nonprofit-research",    "name": "Asian Nonprofit Research",    "tag": "Text Analysis · Asia",         "url": "https://luanpao82.github.io/asian-nonprofit-research/index.html"},
+              {"key": "coc-criminalization",         "name": "Anti-criminalization by CoC", "tag": "Multilevel DiD · Homelessness","url": "https://luanpao82.github.io/coc-criminalization/"},
+              {"key": "arnova-history",              "name": "ARNOVA History Database",     "tag": "Longitudinal Data · ARNOVA",   "url": "https://luanpao82.github.io/arnova-history/"},
+              {"key": "immigration-policy-nonprofit","name": "Policy Signals & Revenue",    "tag": "Signaling Theory · Nonprofit", "url": "https://luanpao82.github.io/immigration-policy-nonprofit/"},
+              {"key": "state-immigration-policy",    "name": "State Immigration Policy",    "tag": "Policy Analysis · Immigration","url": "https://luanpao82.github.io/state-immigration-policy/"},
           ]
 
-          import subprocess
-          projects_js = []
-          for r in repos:
-              result = subprocess.run(
-                  ["gh", "api", f"repos/luanpao82/{r['key']}/commits?per_page=30",
-                   "--jq", '[.[] | {date: .commit.author.date[0:10], msg: .commit.message | split("\\n")[0][0:80]}]'],
-                  capture_output=True, text=True
+          # Strict-safe escape for content embedded in single-quoted JS strings.
+          # Order matters: backslash first.
+          def js_escape(s):
+              return (
+                  s.replace("\\", "\\\\")
+                   .replace("'", "\\'")
+                   .replace("\r", "")
+                   .replace("\n", " ")
+                   .replace("<", "\\x3c")  # neutralize </script> in commit messages
+                   .replace(">", "\\x3e")
               )
-              commits = json.loads(result.stdout) if result.returncode == 0 else []
 
-              commit_lines = []
-              for c in commits:
-                  msg = c["msg"].replace("\\", "\\\\").replace("'", "\\'")
-                  commit_lines.append(f"        {{ date: '{c['date']}', msg: '{msg}' }}")
+          def fetch_commits(key):
+              try:
+                  r = subprocess.run(
+                      ["gh", "api", f"repos/luanpao82/{key}/commits?per_page=30",
+                       "--jq", '[.[] | {date: .commit.author.date[0:10], msg: .commit.message | split("\\n")[0][0:80]}]'],
+                      capture_output=True, text=True, timeout=30,
+                  )
+                  if r.returncode != 0 or not r.stdout.strip():
+                      print(f"[warn] gh api failed for {key}: {r.stderr.strip()[:200]}", file=sys.stderr)
+                      return None
+                  return json.loads(r.stdout)
+              except Exception as e:
+                  print(f"[warn] fetch_commits({key}) raised: {e}", file=sys.stderr)
+                  return None
 
-              commits_block = ",\n".join(commit_lines)
-              projects_js.append(f"""    {{
-                name: '{r["name"]}',
-                tag: '{r["tag"]}',
-                url: '{r["url"]}',
-                commits: [
-          {commits_block},
-                ]
-              }}""")
+          blocks = []
+          fetched_any = False
+          for r in REPOS:
+              commits = fetch_commits(r["key"])
+              if commits is None:
+                  # Bail out entirely — better to keep yesterday's data than to half-update.
+                  print(f"[abort] could not fetch commits for {r['key']}", file=sys.stderr)
+                  sys.exit(0)
+              fetched_any = fetched_any or len(commits) > 0
+              commit_lines = ",\n".join(
+                  f"        {{ date: '{c['date']}', msg: '{js_escape(c['msg'])}' }}"
+                  for c in commits
+              )
+              blocks.append(
+                  "    {\n"
+                  f"      name: '{js_escape(r['name'])}',\n"
+                  f"      tag: '{js_escape(r['tag'])}',\n"
+                  f"      primary: true,\n"
+                  f"      url: '{js_escape(r['url'])}',\n"
+                  "      commits: [\n"
+                  f"{commit_lines}\n"
+                  "      ]\n"
+                  "    }"
+              )
 
-          new_block = "  const PROJECTS = [\n" + ",\n".join(projects_js) + "\n  ];"
+          if not fetched_any:
+              print("[abort] no commits returned from any repo; leaving dashboard untouched", file=sys.stderr)
+              sys.exit(0)
 
-          # Read dashboard.html
+          marker_start = "// >>> AUTO_UPDATE_START"
+          marker_end = "// <<< AUTO_UPDATE_END"
+          replacement = (
+              marker_start + " — auto-updated by .github/workflows/update-dashboard.yml; do not edit between markers\n"
+              + ",\n".join(blocks)
+              + ",\n    "
+              + marker_end
+          )
+
           with open("dashboard.html", "r") as f:
               html = f.read()
 
-          # Replace the PROJECTS block
-          pattern = r"  const PROJECTS = \[[\s\S]*?\n  \];"
-          html = re.sub(pattern, new_block, html, count=1)
+          pattern = re.compile(re.escape(marker_start) + r".*?" + re.escape(marker_end), re.DOTALL)
+          if not pattern.search(html):
+              print("[abort] auto-update markers not found in dashboard.html", file=sys.stderr)
+              sys.exit(1)
 
-          with open("dashboard.html", "w") as f:
-              f.write(html)
-
-          print(f"Updated {len(repos)} projects")
+          new_html = pattern.sub(lambda _m: replacement, html, count=1)
+          if new_html == html:
+              print("No data changes")
+          else:
+              with open("dashboard.html", "w") as f:
+                  f.write(new_html)
+              print(f"Updated {len(REPOS)} primary projects")
           PYEOF
 
       - name: Commit and push if changed
         run: |
-          cd $GITHUB_WORKSPACE
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dashboard.html
