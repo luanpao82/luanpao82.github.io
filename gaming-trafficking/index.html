@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Dashboard · Gaming Community and Human Trafficking</title>
+  <meta name="description" content="Collaborator progress dashboard for the AI trafficking-detection project. Funded by the Creative Future Awards, Pabst Steinmetz Foundation.">
+  <style>
+    :root {
+      --gold: #FFC904;          /* UCF Gold */
+      --gold-deep: #b58a00;     /* readable gold for text/links */
+      --gold-soft: #fff7db;     /* gold tint background */
+      --black: #000000;         /* UCF Black */
+      --ink: #1a1a1a;
+      --text: #1a1a1a;
+      --text-secondary: #63666a;/* UCF secondary grey */
+      --surface: #f4f4f5;
+      --border: #dcdcdf;
+      --accent: #000000;
+      --link: #b58a00;
+      --green: #1a7f37; --green-bg: #eaf6ee;
+      --amber: #8a5a00; --amber-bg: #fff4e5;
+      --gray: #57606a;  --gray-bg: #eef0f2;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text); line-height: 1.6; background: #fff; -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+    /* gold top stripe */
+    .topstripe { height: 4px; background: var(--gold); }
+
+    /* ── NAV (UCF black bar) ── */
+    body > nav { position: sticky; top: 0; z-index: 100; background: var(--black); border-bottom: 3px solid var(--gold); }
+    body > nav .container { display: flex; align-items: center; justify-content: space-between; height: 54px; gap: 16px; }
+    body > nav .back { font-size: 14px; color: #cfcfcf; font-weight: 500; white-space: nowrap; }
+    body > nav .back:hover { color: #fff; text-decoration: none; }
+    body > nav .brand { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; text-align: right; color: #fff; }
+    body > nav .brand b { color: var(--gold); }
+
+    /* ── SECTION NAV ── */
+    .subnav { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 28px; }
+    .subnav a {
+      font-size: 13px; font-weight: 600; color: var(--ink);
+      padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: #fff;
+    }
+    .subnav a:hover { color: var(--black); border-color: var(--black); background: var(--gold-soft); text-decoration: none; }
+
+    /* ── HERO ── */
+    .hero { padding: 60px 0 40px; border-bottom: 1px solid var(--border); }
+    .hero .label {
+      font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--gold-deep); margin-bottom: 14px;
+    }
+    .hero h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.12; letter-spacing: -0.02em; font-weight: 800; max-width: 760px; margin-bottom: 14px; }
+    .hero h1 .rule { display: block; width: 64px; height: 5px; background: var(--gold); border-radius: 3px; margin-top: 16px; }
+    .hero p.lead { font-size: 17px; color: var(--text-secondary); max-width: 680px; margin-top: 18px; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; align-items: center; }
+    .grant-badge {
+      display: inline-flex; align-items: center; gap: 9px; padding: 9px 15px;
+      background: var(--gold-soft); border: 1px solid #f0e2a8; border-radius: 10px; font-size: 13.5px;
+    }
+    .grant-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); border: 1px solid var(--gold-deep); flex: 0 0 auto; }
+    .updated { font-size: 13px; color: var(--text-secondary); }
+    .updated b { color: var(--text); font-weight: 700; }
+
+    /* progress bar */
+    .progress-wrap { margin-top: 24px; max-width: 520px; }
+    .progress-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .progress-top .pct { font-weight: 800; color: var(--black); }
+    .progress-bar { height: 9px; background: var(--surface); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+    .progress-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #ffd83a); border-radius: 999px; }
+
+    /* ── SECTION ── */
+    section.block { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    section.block .section-label { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 10px; }
+    section.block h2 { font-size: 25px; letter-spacing: -0.02em; font-weight: 800; margin-bottom: 24px; color: var(--black); }
+
+    /* status pills */
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .pill.done { background: var(--green-bg); color: var(--green); }
+    .pill.doing { background: var(--amber-bg); color: var(--amber); }
+    .pill.todo { background: var(--gray-bg); color: var(--gray); }
+
+    /* ── TIMELINE ── */
+    .timeline { position: relative; margin-left: 8px; }
+    .timeline::before { content: ""; position: absolute; left: 7px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
+    .milestone { position: relative; padding: 0 0 26px 34px; }
+    .milestone:last-child { padding-bottom: 0; }
+    .milestone .node { position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--border); }
+    .milestone.done .node { background: var(--gold); border-color: var(--gold-deep); }
+    .milestone.doing .node { background: #fff; border-color: var(--gold-deep); box-shadow: 0 0 0 4px var(--gold-soft); }
+    .milestone .m-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .milestone .m-title { font-size: 16px; font-weight: 700; }
+    .milestone .m-date { font-size: 13px; color: var(--text-secondary); }
+    .milestone .m-desc { font-size: 14.5px; color: var(--text-secondary); margin-top: 3px; }
+
+    /* ── DIVISION OF LABOR ── */
+    .labor { display: grid; gap: 12px; }
+    .labor-item { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 10px; padding: 15px 16px; }
+    .labor-item h3 { font-size: 15.5px; font-weight: 800; color: var(--black); margin-bottom: 10px; }
+    .labor-roles { display: flex; flex-wrap: wrap; gap: 8px; }
+    .role-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; background: var(--gold-soft); border: 1px solid #f0e2a8; border-radius: 999px; padding: 4px 11px; }
+    .role-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); border: 1px solid var(--gold-deep); flex: 0 0 auto; }
+    .role-chip b { font-weight: 700; color: var(--ink); }
+    .role-chip .scope { color: var(--text-secondary); }
+    .labor-note { font-size: 13.5px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; }
+
+    /* ── MEETINGS ── */
+    .meeting { padding: 18px 0; border-bottom: 1px solid var(--border); }
+    .meeting:first-child { padding-top: 0; }
+    .meeting:last-child { border-bottom: none; padding-bottom: 0; }
+    .meeting .mt-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .meeting .mt-date { font-size: 15px; font-weight: 800; }
+    .meeting .mt-attend { font-size: 13px; color: var(--text-secondary); }
+    .meeting ul { list-style: none; }
+    .meeting li { font-size: 14.5px; padding: 3px 0 3px 20px; position: relative; }
+    .meeting li::before { content: ""; position: absolute; left: 4px; top: 11px; width: 5px; height: 5px; border-radius: 50%; background: var(--text-secondary); }
+    .meeting li.decision { font-weight: 500; }
+    .meeting li.decision::before { background: var(--gold); border: 1px solid var(--gold-deep); width: 8px; height: 8px; top: 9px; left: 3px; }
+    .tag-decision { font-size: 10.5px; font-weight: 800; color: var(--gold-deep); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 6px; }
+
+    /* ── DOCS ── */
+    .docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    .doc-card { display: block; border: 1px solid var(--border); border-radius: 11px; padding: 16px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .doc-card:hover { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); text-decoration: none; }
+    .doc-card .d-type { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gold-deep); }
+    .doc-card .d-name { font-size: 15px; font-weight: 700; color: var(--text); margin: 6px 0 3px; }
+    .doc-card .d-name::after { content: " ↗"; color: var(--gold-deep); font-weight: 400; }
+    .doc-card .d-note { font-size: 13px; color: var(--text-secondary); }
+
+    /* ── FOOTER (UCF black) ── */
+    footer { padding: 34px 0 44px; background: var(--black); color: #cfcfcf; margin-top: 0; }
+    footer .fbrand { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    footer .fbrand b { color: var(--gold); }
+    footer p { font-size: 13.5px; color: #b9b9b9; }
+    .editnote { margin-top: 12px; font-size: 12.5px; color: #9a9a9a; }
+    .editnote code { background: #1f1f1f; color: #e6e6e6; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+    @media (max-width: 720px) {
+      .board { grid-template-columns: 1fr; }
+      .hero { padding: 44px 0 32px; }
+      section.block { padding: 36px 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topstripe"></div>
+
+  <nav>
+    <div class="container">
+      <a class="back" href="https://luanpao82.github.io/">&larr; Dr. Seongho An</a>
+      <span class="brand">Project Dashboard</span>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <p class="label">Collaborator Progress Dashboard</p>
+      <h1>Gaming Community and Human Trafficking<span class="rule"></span></h1>
+      <p class="lead">Developing a text-based artificial intelligence tool to detect human trafficking recruitment in online games and social media.</p>
+      <div class="meta-row">
+        <span class="grant-badge"><span class="dot"></span><span><b>Creative Future Awards</b> &middot; Pabst Steinmetz Foundation</span></span>
+        <span class="updated">Last updated: <b id="lastUpdated"></b></span>
+      </div>
+      <nav class="subnav">
+        <a href="#docs">Documents</a>
+        <a href="#milestones">Timeline</a>
+        <a href="#tasks">Tasks</a>
+        <a href="#meetings">Meetings</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="block" id="docs">
+    <div class="container">
+      <h2>Documents &amp; Data</h2>
+      <div class="docs" id="docs-grid"></div>
+    </div>
+  </section>
+
+  <section class="block" id="milestones">
+    <div class="container">
+      <h2>Timeline</h2>
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </section>
+
+  <section class="block" id="tasks">
+    <div class="container">
+      <h2>Tasks &mdash; Division of Labor</h2>
+      <div class="labor" id="labor"></div>
+    </div>
+  </section>
+
+  <section class="block" id="meetings">
+    <div class="container">
+      <h2>Meeting Notes</h2>
+      <div class="docs" id="meeting-notes"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p class="fbrand"><b>Gaming Community and Human Trafficking</b></p>
+      <p>Supported by the Creative Future Awards, Pabst Steinmetz Foundation.</p>
+      <p class="editnote">To update this dashboard, edit the <code>DATA</code> object near the top of the <code>&lt;script&gt;</code> in <code>index.html</code> &mdash; no HTML structure changes needed.</p>
+    </div>
+  </footer>
+
+  <script>
+  /* ============================================================
+     EDIT ONLY THIS OBJECT TO UPDATE THE DASHBOARD.
+     status values: "done" | "doing" | "todo"
+     Everything below is placeholder content — replace with real data.
+     ============================================================ */
+  const DATA = {
+    lastUpdated: "July 24, 2026",
+
+    milestones: [
+      { title: "Final spend-out", date: "Due 5/30/2027", status: "todo", desc: "Final spend out needs to be done by 5/30/2027." },
+      { title: "Final report",    date: "FY2027",        status: "todo", desc: "Final report by FY2027 to Dr. Peter Larson and Dean of CAH." }
+    ],
+
+    // Division of labor — each task, its owners, and optional detail
+    labor: [
+      { task: "IRB development and submission",
+        roles: [ { who: "Yovanna" }, { who: "Seongho" } ] },
+      { task: "Literature review",
+        roles: [ { who: "Lingwei" }, { who: "Seongho" } ],
+        note: "Academic literature; similar programs and tools (e.g., parental control technologies, kids online safety tools)." },
+      { task: "Interviewee recruiting strategies",
+        roles: [ { who: "Jessica", scope: "Partner organizations & communities" },
+                 { who: "Mike",    scope: "Game companies" },
+                 { who: "Yovanna", scope: "Public schools" } ] },
+      { task: "Interview questions",
+        roles: [ { who: "Mike" } ] }
+    ],
+
+    // Meeting notes live in a shared Google Doc — paste its URL below
+    meetingNotes: { name: "Meeting Notes", url: "https://docs.google.com/document/d/1WpjkSeCgpJw5u2bwxM792pqGMigoROdnml7WvHMMODo/edit?tab=t.0#heading=h.wx4ojsk834gt", note: "Running notes & decisions (Google Doc)" },
+
+    docs: [
+      { type: "Drive",    name: "Shared project folder",  url: "https://ucf.sharepoint.com/:f:/r/sites/ParentalControlforGaming_GRP/Shared%20Documents/Research%20Project?csf=1&web=1&e=qviQmp", note: "Main working folder (SharePoint)" },
+      { type: "Grant",    name: "Grant documents",        url: "https://ucf.sharepoint.com/:f:/r/sites/ParentalControlforGaming_GRP/Shared%20Documents/Research%20Project/Creative%20Future%20Award%20Grant?csf=1&web=1&e=Q6xPq2", note: "Creative Future Awards" }
+    ]
+  };
+
+  /* ============================================================
+     Rendering — no need to edit below this line.
+     ============================================================ */
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const statusLabel = { done: "Done", doing: "In progress", todo: "Planned" };
+
+  $("lastUpdated").textContent = DATA.lastUpdated;
+
+  // Milestones timeline
+  $("timeline").innerHTML = DATA.milestones.map(m => `
+    <div class="milestone ${m.status}">
+      <span class="node"></span>
+      <div class="m-head">
+        <span class="m-title">${esc(m.title)}</span>
+        <span class="m-date">${esc(m.date)}</span>
+      </div>
+      ${m.desc ? `<div class="m-desc">${esc(m.desc)}</div>` : ""}
+    </div>`).join("");
+
+  // Division of labor
+  $("labor").innerHTML = DATA.labor.map(item => `
+    <div class="labor-item">
+      <h3>${esc(item.task)}</h3>
+      <div class="labor-roles">
+        ${item.roles.map(r => `<span class="role-chip"><span class="dot"></span><b>${esc(r.who)}</b>${r.scope ? `<span class="scope">&mdash; ${esc(r.scope)}</span>` : ""}</span>`).join("")}
+      </div>
+      ${item.note ? `<div class="labor-note">${esc(item.note)}</div>` : ""}
+    </div>`).join("");
+
+  // Meeting notes (Google Doc link)
+  (function() {
+    const m = DATA.meetingNotes;
+    $("meeting-notes").innerHTML = `
+      <a class="doc-card" href="${esc(m.url)}" ${m.url && m.url !== "#" ? 'target="_blank" rel="noopener"' : ""}>
+        <div class="d-type">Google Doc</div>
+        <div class="d-name">${esc(m.name)}</div>
+        <div class="d-note">${esc(m.note)}</div>
+      </a>`;
+  })();
+
+  // Docs
+  $("docs-grid").innerHTML = DATA.docs.map(d => `
+    <a class="doc-card" href="${esc(d.url)}" ${d.url && d.url !== "#" ? 'target="_blank" rel="noopener"' : ""}>
+      <div class="d-type">${esc(d.type)}</div>
+      <div class="d-name">${esc(d.name)}</div>
+      ${d.note ? `<div class="d-note">${esc(d.note)}</div>` : ""}
+    </a>`).join("");
+  </script>
+
+</body>
+</html>
