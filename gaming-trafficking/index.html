@@ -125,6 +125,18 @@
     .meeting li.decision::before { background: var(--gold); border: 1px solid var(--gold-deep); width: 8px; height: 8px; top: 9px; left: 3px; }
     .tag-decision { font-size: 10.5px; font-weight: 800; color: var(--gold-deep); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 6px; }
 
+    /* ── NEXT MEETING (auto-computed) ── */
+    .nextmtg { display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      background: var(--gold-soft); border: 1px solid #f0e2a8; border-left: 3px solid var(--gold);
+      border-radius: 12px; padding: 18px 20px; margin-bottom: 22px; }
+    .nextmtg .nm-main { min-width: 0; }
+    .nextmtg .nm-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold-deep); }
+    .nextmtg .nm-date { font-size: 19px; font-weight: 800; color: var(--black); margin-top: 3px; }
+    .nextmtg .nm-sub { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+    .nextmtg .nm-when { margin-left: auto; text-align: right; padding-left: 8px; }
+    .nextmtg .nm-count { font-size: 24px; font-weight: 800; color: var(--gold-deep); line-height: 1; }
+    .nextmtg .nm-count small { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-top: 5px; }
+
     /* ── DOCS ── */
     .docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
     .doc-card { display: block; border: 1px solid var(--border); border-radius: 11px; padding: 16px; background: #fff; transition: border-color .15s, box-shadow .15s; }
@@ -201,7 +213,8 @@
 
   <section class="block" id="meetings">
     <div class="container">
-      <h2>Meeting Notes</h2>
+      <h2>Meetings</h2>
+      <div class="nextmtg" id="next-meeting" hidden></div>
       <div class="docs" id="meeting-notes"></div>
     </div>
   </section>
@@ -221,7 +234,18 @@
      Everything below is placeholder content — replace with real data.
      ============================================================ */
   const DATA = {
-    lastUpdated: "July 24, 2026",
+    lastUpdated: "August 6, 2026",
+
+    // Recurring meeting — the "Next Meeting" card auto-computes the next date from today.
+    // anchor = first meeting (YYYY-MM-DD), then every `intervalDays`. Time is fixed wall-clock in tz.
+    meetingSchedule: {
+      anchor: "2026-08-17",   // first meeting date
+      time: "10:00",          // start time (24h) in tz
+      intervalDays: 14,       // every 2 weeks
+      tz: "America/New_York", // meeting timezone (used to compute "today")
+      tzLabel: "ET",          // shown next to the time
+      cadence: "every 2 weeks"
+    },
 
     milestones: [
       { title: "Final spend-out", date: "Due 5/30/2027", status: "todo", desc: "Final spend out needs to be done by 5/30/2027." },
@@ -300,6 +324,48 @@
       <div class="d-name">${esc(d.name)}</div>
       ${d.note ? `<div class="d-note">${esc(d.note)}</div>` : ""}
     </a>`).join("");
+
+  // Next Meeting — computed live from today's date (recurs every intervalDays from the anchor).
+  (function() {
+    const s = DATA.meetingSchedule, host = $("next-meeting");
+    if (!s || !host) return;
+    const DAY = 86400000;
+    const [ay, am, ad] = s.anchor.split("-").map(Number);
+    // "Today" as a UTC-midnight date, evaluated in the meeting's timezone
+    let todayMid;
+    try {
+      const t = new Intl.DateTimeFormat("en-CA", { timeZone: s.tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const [ty, tm, td] = t.split("-").map(Number);
+      todayMid = Date.UTC(ty, tm - 1, td);
+    } catch (e) {
+      const n = new Date(); todayMid = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate());
+    }
+    // Step from the anchor by whole intervals until we reach today or a future date (date-only → DST-safe)
+    let cur = Date.UTC(ay, am - 1, ad);
+    if (cur < todayMid) {
+      const steps = Math.ceil((todayMid - cur) / DAY / s.intervalDays);
+      cur += steps * s.intervalDays * DAY;
+    }
+    const d = new Date(cur);
+    const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const dateStr = `${WD[d.getUTCDay()]}, ${MO[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+    // 24h → 12h time
+    const [hh, mm] = s.time.split(":").map(Number);
+    const ap = hh < 12 ? "AM" : "PM", hr = hh % 12 === 0 ? 12 : hh % 12;
+    const timeStr = `${hr}:${String(mm).padStart(2, "0")} ${ap}${s.tzLabel ? " " + s.tzLabel : ""}`;
+    // Countdown
+    const days = Math.round((cur - todayMid) / DAY);
+    const count = days <= 0 ? "Today" : `${days}<small>${days === 1 ? "day away" : "days away"}</small>`;
+    host.innerHTML = `
+      <div class="nm-main">
+        <div class="nm-label">Next Meeting</div>
+        <div class="nm-date">${dateStr}</div>
+        <div class="nm-sub">${timeStr}${s.cadence ? " &middot; recurring " + esc(s.cadence) : ""}</div>
+      </div>
+      <div class="nm-when"><div class="nm-count">${count}</div></div>`;
+    host.hidden = false;
+  })();
   </script>
 
 </body>
