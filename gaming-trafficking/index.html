@@ -137,6 +137,14 @@
     .nextmtg .nm-count { font-size: 24px; font-weight: 800; color: var(--gold-deep); line-height: 1; }
     .nextmtg .nm-count small { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-top: 5px; }
 
+    /* ── NEXT-MEETING AGENDA ── */
+    .agenda { border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 12px; padding: 16px 18px; margin-bottom: 22px; }
+    .agenda .a-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold-deep); margin-bottom: 10px; }
+    .agenda ul { list-style: none; }
+    .agenda li { font-size: 14.5px; padding: 4px 0 4px 20px; position: relative; }
+    .agenda li::before { content: ""; position: absolute; left: 4px; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); border: 1px solid var(--gold-deep); }
+    .agenda li b { font-weight: 700; }
+
     /* ── DOCS ── */
     .docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
     .doc-card { display: block; border: 1px solid var(--border); border-radius: 11px; padding: 16px; background: #fff; transition: border-color .15s, box-shadow .15s; }
@@ -145,6 +153,13 @@
     .doc-card .d-name { font-size: 15px; font-weight: 700; color: var(--text); margin: 6px 0 3px; }
     .doc-card .d-name::after { content: " ↗"; color: var(--gold-deep); font-weight: 400; }
     .doc-card .d-note { font-size: 13px; color: var(--text-secondary); }
+
+    /* ── PROJECT STRUCTURE ── */
+    .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+    .part-card { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 10px; padding: 16px 17px; }
+    .part-card .p-num { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold-deep); }
+    .part-card h3 { font-size: 15.5px; font-weight: 800; color: var(--black); margin: 5px 0 8px; line-height: 1.25; }
+    .part-card p { font-size: 13.5px; color: var(--text-secondary); }
 
     /* ── FOOTER (UCF black) ── */
     footer { padding: 34px 0 44px; background: var(--black); color: #cfcfcf; margin-top: 0; }
@@ -182,6 +197,7 @@
         <span class="updated">Last updated: <b id="lastUpdated"></b></span>
       </div>
       <nav class="subnav">
+        <a href="#structure">Structure</a>
         <a href="#docs">Documents</a>
         <a href="#milestones">Timeline</a>
         <a href="#tasks">Tasks</a>
@@ -189,6 +205,13 @@
       </nav>
     </div>
   </header>
+
+  <section class="block" id="structure">
+    <div class="container">
+      <h2>Project Structure</h2>
+      <div class="parts" id="structure-grid"></div>
+    </div>
+  </section>
 
   <section class="block" id="docs">
     <div class="container">
@@ -215,6 +238,7 @@
     <div class="container">
       <h2>Meetings</h2>
       <div class="nextmtg" id="next-meeting" hidden></div>
+      <div id="next-agenda"></div>
       <div class="docs" id="meeting-notes"></div>
     </div>
   </section>
@@ -234,7 +258,7 @@
      Everything below is placeholder content — replace with real data.
      ============================================================ */
   const DATA = {
-    lastUpdated: "August 6, 2026",
+    lastUpdated: "August 24, 2026",
 
     // Recurring meeting — the "Next Meeting" card auto-computes the next date from today.
     // anchor = first meeting (YYYY-MM-DD), then every `intervalDays`. Time is fixed wall-clock in tz.
@@ -247,24 +271,49 @@
       cadence: "every 2 weeks"
     },
 
+    // Three-part project structure (agreed July 27, 2026)
+    structure: [
+      { part: "Part 1", title: "White Paper & Literature Synthesis",
+        desc: "Synthesize existing technologies, guidelines, and parental-control tools for preventing online and in-game human trafficking. Output: a book chapter." },
+      { part: "Part 2", title: "Academic Paper & Empirical Study",
+        desc: "Collect, anonymize, and open-source a modern real-world conversation dataset; run quantitative surveys and qualitative interviews with youth gamers and parents; and build a user- and survivor-centered framework." },
+      { part: "Part 3", title: "Digital Tool & App Development",
+        desc: "Develop a practical prototype — a parent-facing online-safety tool — from the research findings, linked to the Pabst Steinmetz grant." }
+    ],
+
     milestones: [
-      { title: "Final spend-out", date: "Due 5/30/2027", status: "todo", desc: "Final spend out needs to be done by 5/30/2027." },
-      { title: "Final report",    date: "FY2027",        status: "todo", desc: "Final report by FY2027 to Dr. Peter Larson and Dean of CAH." }
+      { title: "IRB resubmitted",             date: "Aug 13, 2026",  status: "done",  desc: "Protocol updates resubmitted to the UCF IRB." },
+      { title: "White paper / book chapter",  date: "By Dec 2026",   status: "doing", desc: "Synthesis of the current landscape of technologies, guidelines, and tools (Part 1)." },
+      { title: "Interviews & empirical study", date: "2026–2027",    status: "doing", desc: "~30 interviews with gamers and parents, plus surveys, feeding the framework and journal paper (Part 2)." },
+      { title: "App prototype",               date: "Spring 2027",   status: "todo",  desc: "Parent-facing online-safety tool (Part 3)." },
+      { title: "Final spend-out",             date: "Due 5/30/2027", status: "todo",  desc: "Final spend out needs to be done by 5/30/2027." },
+      { title: "Final report",                date: "FY2027",        status: "todo",  desc: "Final report by FY2027 to Dr. Peter Larson and Dean of CAH." }
     ],
 
     // Division of labor — each task, its owners, and optional detail
     labor: [
       { task: "IRB development and submission",
-        roles: [ { who: "Yovanna" }, { who: "Seongho" } ] },
-      { task: "Literature review",
-        roles: [ { who: "Lingwei" }, { who: "Seongho" } ],
-        note: "Academic literature; similar programs and tools (e.g., parental control technologies, kids online safety tools)." },
-      { task: "Interviewee recruiting strategies",
-        roles: [ { who: "Jessica", scope: "Partner organizations & communities" },
+        roles: [ { who: "Yovanna" }, { who: "Seongho" } ],
+        note: "Protocol updates resubmitted to the UCF IRB on August 13, 2026." },
+      { task: "Literature review (three parts)",
+        roles: [ { who: "Seongho", scope: "Theory & stakeholder-informed safety" },
+                 { who: "Lingwei", scope: "Technology & practice landscape" },
+                 { who: "Yovanna", scope: "Legal & regulatory environment" } ] },
+      { task: "Interviewee recruiting",
+        roles: [ { who: "Jessica", scope: "College-age gamers & nonprofits" },
                  { who: "Mike",    scope: "Game companies" },
-                 { who: "Yovanna", scope: "Public schools" } ] },
+                 { who: "Yovanna", scope: "Parents & public schools" },
+                 { who: "Stephen", scope: "Nonprofit partners" } ],
+        note: "Target: ~30 interviews across college-age gamers (18–25), parents of teen gamers (13–17), game companies, and nonprofits." },
       { task: "Interview questions",
-        roles: [ { who: "Mike" } ] }
+        roles: [ { who: "Mike", scope: "Parent interview bank" } ] }
+    ],
+
+    // Prep items to review at the next meeting (from the latest meeting notes)
+    nextAgenda: [
+      { who: "Jessica", task: "Outlines for the book chapter and white paper" },
+      { who: "Mike",    task: "Conference information (Thriving in Games Institute)" },
+      { who: "Seongho", task: "Interviewee recruiting flyer" }
     ],
 
     // Meeting notes live in a shared Google Doc — paste its URL below
@@ -284,6 +333,16 @@
   const statusLabel = { done: "Done", doing: "In progress", todo: "Planned" };
 
   $("lastUpdated").textContent = DATA.lastUpdated;
+
+  // Project structure (3 parts)
+  if ($("structure-grid") && DATA.structure) {
+    $("structure-grid").innerHTML = DATA.structure.map(s => `
+      <div class="part-card">
+        <div class="p-num">${esc(s.part)}</div>
+        <h3>${esc(s.title)}</h3>
+        <p>${esc(s.desc)}</p>
+      </div>`).join("");
+  }
 
   // Milestones timeline
   $("timeline").innerHTML = DATA.milestones.map(m => `
@@ -305,6 +364,15 @@
       </div>
       ${item.note ? `<div class="labor-note">${esc(item.note)}</div>` : ""}
     </div>`).join("");
+
+  // Next-meeting agenda (prep items)
+  if ($("next-agenda") && DATA.nextAgenda && DATA.nextAgenda.length) {
+    $("next-agenda").innerHTML = `
+      <div class="agenda">
+        <div class="a-label">To prepare for the next meeting</div>
+        <ul>${DATA.nextAgenda.map(a => `<li><b>${esc(a.who)}</b> &mdash; ${esc(a.task)}</li>`).join("")}</ul>
+      </div>`;
+  }
 
   // Meeting notes (Google Doc link)
   (function() {
